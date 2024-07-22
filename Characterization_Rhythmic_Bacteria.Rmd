@@ -1,0 +1,2603 @@
+---
+title: "Chapter2_full"
+author: "P_Ubilla-G"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+This script includes all the codes used to data download, modeling and
+analysis. Please take into account that some parts were run in bash
+console and others in jupyter lab.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(coRdon)
+library(gRodon)
+library(Biostrings)
+library(ggplot2)
+library(ggfortify)
+library(hrbrthemes)
+library(ggpubr)
+#library(RevEcoR) 
+library(igraph)
+library(factoextra)
+library(FactoMineR)
+library(wesanderson)
+library(vegan)
+library(Matrix)
+library(igraph)
+library(XML)
+library(stringr)
+library(magrittr)
+library(gtools)
+library(plyr)
+library(purrr)
+library(vegan)
+library(gridExtra)
+library(grid)
+library(cowplot)
+set.seed(7891)
+```
+
+## Selecting bacteria
+
+The first step was to classify and select the rhythmic, non-rhythmic and
+once-rhythmic bacteria to compare
+
+```{r first step classify the species in Reitmeier et al. 2021 and Thaiss et al. 2014, fig.height = 4, fig.width= 8}
+## We cross the bacteria published in Reitmeier et al. 2021 and Thaiss et al. 2014 to classify species between rhythmic, non-rhythmic, and once rhythmi. (1) Rhythmic, (2) non-rhythmic when present, (3) once rhythmic.
+
+rei2013 <- read_csv("Reitmeier_mbt_cohorte_2013.csv")# supp. tab 2 Reitmeier et al.
+
+reit.rit <- read_csv("Reitmeier_sup_tab7_modClean.csv") %>% filter(`adj. p-value cosine regression Control subjects` <= 0.05) %>% select(OTU, Name, "mean nonT2D") %>%  mutate(Rhythmicity_Reit = "yes") #supp. tab 7 Reitmeier et al.
+
+reit <- as.data.frame (rei2013) %>% transform (mean_abundance = as.numeric(mean_abundance)) %>% filter (mean_abundance >= 0.1, prevalence >= 10)
+
+reit.rit.arit <- full_join(reit.rit, reit)
+reit.rit.arit$Rhythmicity_Reit[is.na(reit.rit.arit$Rhythmicity_Reit)] = "no"
+###
+reit.rit.arit2 <- reit.rit.arit %>%  dplyr::rename(Taxon = "Name") %>% select(-"mean nonT2D", -mean_abundance, -prevalence) 
+reit.rit.arit2$Taxon <- gsub(" ", "_s_", reit.rit.arit2$Taxon)
+reit.rit.arit2$Taxon <- paste("g", reit.rit.arit2$Taxon, sep="_")
+
+reit.rit.arit22 <- reit.rit.arit2 %>%  select(-OTU) %>% distinct(Taxon, .keep_all = TRUE)
+
+## Check if in that data the rhythmic bacteria are the most prevalent and abundant
+rankreit <- reit.rit.arit
+rankreit$Abundance_rank = rank(desc(rankreit$mean_abundance))
+rankreit$Prevalence_rank = rank(desc(rankreit$prevalence))
+
+## Thaiss data. 
+t1 <- read_csv("Thaiss_sup6_tab1_subj1_normal.csv") #Thaiss et al. supplementary table 6 shet 1
+t2 <- read_csv("Thaiss_sup6_tab2_subj2_normal.csv") #Thaiss et al. supplementary table 6 shet 2
+
+solosp_t1 <- t1 %>%   filter(grepl("s__", Taxon))
+solosp_t1$Taxon <- gsub("([^;]+;)*g__([^;]+);*s__([^;]+)?", "g_\\2_s_\\3", solosp_t1$Taxon)
+solosp_t1$mean_ab <- rowMeans(solosp_t1[,7:12])
+solosp_t1 <- solosp_t1 %>% select(Taxon, ADJ.P, mean_ab) %>% mutate(subj1 = "s1") %>% mutate(Rhythmicity_s1 = ifelse(ADJ.P <= 0.05, "yes1", "no1")) 
+
+solosp_t2 <- t2 %>%   filter(grepl("s__", Taxon))
+solosp_t2$Taxon <- gsub("([^;]+;)*g__([^;]+);*s__([^;]+)?", "g_\\2_s_\\3", solosp_t2$Taxon)
+solosp_t2$mean_ab <- rowMeans(solosp_t2[,7:26])
+solosp_t2 <- solosp_t2 %>% select(Taxon, ADJ.P, mean_ab) %>% mutate(subj2 = "s2") %>% mutate(Rhythmicity_s2 = ifelse(ADJ.P <= 0.05, "yes2", "no2")) 
+
+# Here we can't filter as in Reitmeier et al. because the magnitud of the abundances are lower than 0.01 (filter will let to 1 species in t1)
+
+solospt1.fil <- solosp_t1 %>% filter (mean_ab > 0) %>% select(-ADJ.P, -mean_ab)
+solospt2.fil <- solosp_t2 %>% filter (mean_ab > 0) %>% select(-ADJ.P, -mean_ab)
+thaissp.fil <- full_join(solospt1.fil, solospt2.fil)
+
+## Cheking ranking of abundance of rhythmic
+rankt1 <- solosp_t1
+rankt2 <- solosp_t2
+
+rankt1$Abundance_rank = rank(desc(rankt1$mean_ab))
+rankt2$Abundance_rank = rank(desc(rankt2$mean_ab))
+
+## ahora cruzar con las de reitmeier
+
+allrhythsp2 <- full_join(thaissp.fil, reit.rit.arit22, by = "Taxon" )
+
+#write_csv(allrhythsp2, "species_rhythmic_thaiss_reit_sp.csv")
+
+## Manually classified by colors and numbers according to the specified classes. Rhythmic= 1, non-rhythmic=2, at least once-rhythmic= 3 and converted to species_rhythmic_thaiss_reit_sp2.csv 
+
+classified.species <- read_csv("species_rhythmic_thaiss_reit_sp2.csv") %>% select(-subj1, -Rhythmicity_s1, -subj2, -Rhythmicity_s2, -Rhythmicity_Reit, -Observation) %>% filter (!is.na(Type)) %>% dplyr::rename(taxa ="Taxon")
+
+
+#####
+# Next we mapped these bacteria into the reference gut microbiota from the chapter 1
+
+statsshortname <- read_csv ("stats_reference_gutmbt_chapter1.csv") %>% select(-min_abRel, -max_abRel, -sd, -var)
+
+stats.all.sp.class <- full_join(statsshortname,classified.species)
+stats.all.sp.class$Type[is.na(stats.all.sp.class$Type)] = 0
+
+stats.all.sp.class$Type <-gsub("3", "once-rhythmic", stats.all.sp.class$Type)
+stats.all.sp.class$Type <-gsub("2", "non-rhythmic", stats.all.sp.class$Type)
+stats.all.sp.class$Type <-gsub("1", "rhythmic", stats.all.sp.class$Type)
+stats.all.sp.class$Type <-gsub("0", "no-data", stats.all.sp.class$Type)
+stats.all.sp.class$Type <- factor(stats.all.sp.class$Type, levels = c("rhythmic", "once-rhythmic", "non-rhythmic", "no-data"))
+
+#write_csv(stats.all.sp.class, "classifiedbacteria_with_stats.csv")
+
+### plot
+plotp <- qplot ((perc_prev), (mean_abRel), data = stats.all.sp.class,  alpha = I(0.7),  size=I(1.7), xlab = "Prevalence (%)" , ylab =  "Mean Relative Abundance %", color = Type) +theme (panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank())#, legend.position = "none")
+
+plotp + scale_color_manual(values = c("Blue", "Sky Blue", "Orange", "Dark gray"),
+                     breaks = c( "rhythmic", "once-rhythmic", "non-rhythmic","no-data"),
+                     labels = c("Rhythmic", "Once Rhythmic", "Non-Rhythmic", "No Data" ))
+```
+
+```{r testing by bootstrap if they are more abundant and prevalent than expected by chance}
+### We will group the rhythmic on one side and all other bacteria in the others (including the once rhythmic, number 3)
+
+stats.all.sp.class2 <- stats.all.sp.class 
+stats.all.sp.class2$Type <- gsub("once-rhythmic", "rhythmic", stats.all.sp.class2$Type)
+stats.all.sp.class2$Type <- gsub("[2]", "0", stats.all.sp.class2$Type)
+
+set.seed(7891)
+
+# Extract the rhythmic bacteria
+rhythmic_bacteria <- subset(stats.all.sp.class, Type == "rhythmic")
+# Remove rows with NA values in mean_abRel
+rhythmic_bacteria <- rhythmic_bacteria[!is.na(rhythmic_bacteria$mean_abRel),]
+
+# Number of rhythmic bacteria
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria)
+
+# Number of permutations
+num_permutations <- 10000  
+
+# Create vectors to store permutation results
+permuted_abrelmeans <- numeric(num_permutations)
+permuted_perc_prev <- numeric(num_permutations)
+ 
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- stats.all.sp.class[!is.na(stats.all.sp.class$mean_abRel), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_abrelmeans[i] <- mean(random_sample$mean_abRel)
+  permuted_perc_prev[i] <- mean(random_sample$perc_prev)
+}
+
+# Calculate observed means and percentage of prevalence for rhythmic bacteria
+observed_abrelmeans <- mean(rhythmic_bacteria$mean_abRel, na.rm=T)
+observed_perc_prev <- mean(rhythmic_bacteria$perc_prev, na.rm=T)
+
+# Calculate p-values
+p_value_mean_abrel <- mean(permuted_abrelmeans >= observed_abrelmeans)
+p_value_perc_prev <- mean(permuted_perc_prev >= observed_perc_prev)
+
+# Print the results
+cat("Observed Mean Abundance:", observed_abrelmeans, "\n")
+cat("Observed Percentage of Prevalence:", observed_perc_prev, "\n")
+cat("P-value (Mean Abundance):", p_value_mean_abrel, "\n")
+cat("P-value (Percentage of Prevalence):", p_value_perc_prev, "\n")
+
+perm_abrel <- as.data.frame(permuted_abrelmeans)
+perm_preva <- as.data.frame(permuted_perc_prev)
+
+abundanceplot <- ggplot() + geom_density(aes(perm_abrel$permuted_abrelmeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_abrelmeans), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value < 0.05", sep = ""), 
+       x = "Mean Relative Abundance", y = "Density")+ theme(panel.background = element_rect(fill = "white", colour = "black", size = 1))
+
+prevaplot <-ggplot() + geom_density(aes(perm_preva$permuted_perc_prev, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_perc_prev), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value < 0.05", sep = ""), 
+       x = "Mean Percentage of Prevalence", y = "Density")+ theme(panel.background = element_rect(fill = "white", colour = "black", size = 1))
+
+higherplots <- cowplot::plot_grid(abundanceplot, prevaplot, ncol= 2,
+                   labels =c("A", "B"), label_size = 22,
+                   label_x = c(0.01,0.01))
+#ggsave("aprevaandabundancehigher.pdf",plot= higherplots, width = 10, height = 4)
+
+```
+
+Observed Mean Abundance: 2.276262 
+Observed Percentage of Prevalence: 79.30468 
+P-value (Mean Abundance): 0 
+P-value (Percentage of Prevalence): 0 
+
+The p-values indicate that bacteria classified as rhythmic tend to be
+more prevalent and abundant than the other bacteria.
+
+```{r plot abundances and prevalences selected bacteria and all }
+statsshortname <- read_csv ("stats_reference_gutmbt_chapter1.csv") %>% select(-min_abRel, -max_abRel, -sd, -var)
+
+stats.selected <- right_join(allselected, statsshortname) %>% dplyr::rename(Rhythmicity = "Type")
+
+plotp2 <- qplot ((perc_prev), (mean_abRel), data = stats.selected,  size=I(2), alpha = I(0.9), xlab = "Prevalence (%)" , ylab =  "Mean Relative Abundance %", color = Rhythmicity) 
+
+plotp2 + geom_point(data = stats.selected %>% filter(Rhythmicity %in% c("random", "non-rhythmic","lessabundant", "lessprevalent")),
+             aes(x = perc_prev, y = mean_abRel, color = Rhythmicity),  size = 2, alpha = 0.9, position = position_dodge(width = 0.5)) +
+  scale_color_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black"),
+                     breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent")) +  
+  theme(axis.text.x = element_text(size = 18), 
+        axis.text.y = element_text(size = 18), 
+        axis.title.x = element_text(size = 24), 
+        axis.title.y = element_text(size = 24), 
+        panel.background = element_rect(fill = "white", colour = "black", linewidth = 1), 
+        panel.grid.major.x = element_blank(), 
+        legend.text = element_text(size = 18), 
+        legend.title = element_blank(),
+        legend.box.background = element_rect( size= 0.9, linetype = "solid", colour = "black")) + 
+  guides(alpha = "none", size = "none", fill = guide_legend(override.aes = list(shape = 21, size = 5)))
+
+#ggsave("Selected_bact_mapping.pdf", width = 12, height = 6)
+
+### All bacteria plot
+
+color_mapping <- c("lessprevalent" = "grey", 
+                   "lessabundant" = "grey",  
+                   "next-prev" = "grey",     
+                   "once-rhythmic" = "grey", 
+                   "non-rhythmic" = "grey",  
+                   "rhythmic" = "Red",      
+                   "next-ab" = "grey",       
+                   "random" = "grey",        
+                   "no-data" = "grey")
+
+plotabrel <- ggplot(stats.selected, aes(x = perc_prev, y = mean_abRel, alpha = I(0.8), fill =Rhythmicity, color = Rhythmicity)) +    geom_point(aes(fill =Rhythmicity), size= 1, show.legend = F) +
+  scale_fill_manual(values= color_mapping)+   scale_color_manual(values= color_mapping)+
+  labs(x="Prevalence (%)", y = "Mean Relative Abundance %" ) + 
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(hjust = 1, size= 12,), axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())
+plotabrel
+
+#ggsave("All_bact_mapping.pdf", plot= plotabrel, width = 10, height = 6)
+
+## all three plots
+
+rel_heights <- c(1, 0.5) 
+rel_widths <- c(1, 0.65)    
+
+# Plot grid with specified heights and widths
+column1 <- plot_grid(
+  plotabrel, 
+  labels = "A", 
+  label_size = 20, 
+  label_x = 0.05, 
+  label_y = 1.0
+)
+
+# Create the second column with plots B and C
+column2 <- plot_grid(
+  plot_grid(abundanceplot, labels = "B", label_size = 20, label_x = 0.05, label_y = 1.0),
+  plot_grid(prevaplot, labels = "C", label_size = 20, label_x = 0.05, label_y = 1.0),
+  ncol = 1
+)
+
+# Combine the columns into the final plot
+mappingplots <- plot_grid(
+  column1, 
+  column2, 
+  ncol = 2, 
+  rel_widths = c(1, 1)  # Adjust rel_widths if needed
+)
+
+```
+
+For these group of bacteria we selected the representative genome and downloaded their fasta file using their ftp links (bash). 
+## Doubling time prediction using fasta files we applied the predictGrowth function from the gRodon package
+
+Doubling time for all available genome
+
+```{r doubling time 614 bacteria}
+
+# The downloaded fasta files were saved in a folder named cds_from_genomic
+parent.folder <- "cds_from_genomic"
+#subfolders
+sub.forlders <- list.dirs(parent.folder, recursive = T)
+ncbidir <- grep("ncbi", sub.forlders, value = T)
+
+fnafile <- list.files(ncbidir, ".gz", full.names = T)
+
+genes <- sapply(fnafile, function(x)readDNAStringSet(x))
+
+# now we assign the names on each data
+
+highly_expressed <- lapply(genes, function(x)grepl("ribosomal protein", names(x), ignore.case = T))
+
+predictedGrowth <- mapply(predictGrowth, genes, highly_expressed, temperature = 37)
+
+#saveRDS(predictedGrowth, "allpredicteddoublingtime.rds")
+
+trpredgr <-as.data.frame(t(predictedGrowth))
+predgrow <- rownames_to_column(trpredgr, var= "taxa")
+finalpredict.h <- predgrow %>% unnest()
+
+finalpredict.h$taxa <- str_replace(finalpredict.h$taxa, "cds_from_genomic/", "")
+
+namesfinalpred <- gsub("_cds.*","", finalpredict.h$taxa)
+#namesfinalpred <- gsub("/.*","", namesfinalpred2)
+#namesfinalpred <- gsub("_genom.*","", namesfinalpred2)
+
+finalpredict.h <- cbind(Taxa = namesfinalpred, finalpredict.h) %>% select(-taxa)
+#write_csv(finalpredict.h, "all_bact_doublingtime.csv")
+
+
+statsshortname <- read_csv ("stats_reference_gutmbt_chapter1.csv") %>% select(-min_abRel, -max_abRel, -sd, -var) %>% dplyr::rename (Taxa = "taxa")
+
+change <- tibble(oldname = c("Lactobacillus_reuteri", "Clostridium_hiranonis","Bacteroides_dorei", "Bacteroides_plebeius", "Bacteroides_vulgatus", "Clostridium_hiranonis", "Lactobacillus_reuteri", "Eubacterium_eligens", "Ruminococcus_lactaris", "Enterorhabdus_caecimuris", "Bacteroides_massiliensis", "Escherichia_coli"),
+                  newname = c("Limosilactobacillus_reuteri", "Peptacetobacter_hiranonis","Phocaeicola_dorei", "Phocaeicola_plebeius", "Phocaeicola_vulgatus", "Peptacetobacter_hiranonis", "Limosilactobacillus_reuteri", "Eubacterium_eligens_ATCC_27750", "Ruminococcus_lactaris_ATCC_29176", "Adlercreutzia_caecimuris", "Phocaeicola_massiliensis", "Escherichia_coli_str_K-12_substr_MG1655"))
+statsshortname.2 <- statsshortname %>% mutate( Taxa = case_when( Taxa %in% change$oldname ~ change$newname[match(Taxa, change$oldname)],
+      TRUE ~ Taxa)) %>% arrange(Taxa)
+
+final.d.allstats <- right_join(statsshortname, finalpredict.h)
+
+## next we filter all doubling time equal or higher than 6 because the authors of the package explain that is the limit of adjustment of the model
+
+#final.d.allstats <- final.d.allstats %>% filter(d < 6)
+
+ggplot(final.d.allstats, aes(x= prevalencia, y = d, alpha = I(0.5), ylab = "", main = "")) + geom_point(size = 1)+ labs(x = "Prevalence", y= "Doubling Time (hr)") + theme(panel.background = element_rect(fill = "white", colour = "black"), axis.text.x = element_text(size = 8))+
+  ggpmisc::stat_poly_line()+
+  ggpmisc::stat_poly_eq(alpha= 0.9,label.x = 0.8)
+
+geom_smooth(method = "lm", se = FALSE, linetype = "solid", color = "black") 
+
+model.all <- lm(d ~ prevalencia, data = final.d.allstats)
+summary_infoall <- summary(model.all)
+
+## Checking if rhythmic bacteria has significantly faster doubling time (lower value)
+
+## In this case the bacteria over the limit of detection will be changed for the purpose of using them to compare
+predicted.many2 <- final.d.allstats %>% mutate(d = ifelse(d > 6, 6, d))
+predicted.many2 <- merge(predicted.many2, allselected) %>% select(Taxa, Rhythmicity, d, perc_prev, mean_abRel)
+set.seed(7891)
+rhythmic_bacteria_size <- subset(predicted.many2, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+
+# Number of permutations
+num_permutations <- 10000 
+
+# Create vectors to store permutation results
+permuted_dt.means <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- predicted.many2[!is.na(predicted.many2$d), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_dt.means[i] <- mean(random_sample$d)
+}
+
+observed_dt.mean <- mean(rhythmic_bacteria_size$d, na.rm=T)
+
+# Calculate p-values
+p_value_mean_dt <- mean(permuted_dt.means <= observed_dt.mean) # portion of times when the permuted doubling time is less or equal to the observed
+
+# Print the results
+cat("Observed Mean Doubling time", observed_dt.mean , "\n")
+cat("P-value (Mean doubling time):", p_value_mean_dt, "\n")
+
+perm_dt <- as.data.frame(permuted_dt.means)
+
+dtplotboot <-  ggplot() + geom_density(aes(perm_dt$permuted_dt.means, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_dt.mean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value ", p_value_mean_dt, sep = ""), 
+         x = "Mean doubling time (Hr)", y = "Density")  + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.2) )
+ dtplotboot
+#ggsave("doublingtime_density_bootstrap.pdf", plot= dtplotboot, width = 5, height = 4)
+
+# dot plot with all doubling times including the taxonomy of phylum
+predicted.many3 <- predicted.many2
+predicted.many3$Rhythmicity[is.na(predicted.many3$Rhythmicity)] = "no-data"
+
+taxphylum <- read_csv ("gutmbtreference_taxonomic_levels.csv") %>% dplyr::rename(Taxa= "species_name")# %>% select (Phylum, taxa)
+
+taxphylum2 <- taxphylum %>% mutate( Taxa = case_when( Taxa %in% change$oldname ~ change$newname[match(Taxa, change$oldname)],
+      TRUE ~ Taxa)) %>% arrange(Taxa)
+
+predicted.many3 <- left_join(predicted.many3, taxphylum) %>% select (Phylum, Class, Order, Family, Genus, Taxa, everything())
+## There are some missing taxonomic relationships that are manually added
+#write_csv(predicted.many3, "taxonomic_levels_and_doubling_time616.csv")
+
+predicted.many3 <- read_csv ("taxonomic_levels_and_doubling_time616_2.csv")
+
+color_mapping <- c("lessprevalent" = "grey", 
+                   "lessabundant" = "grey",  
+                   "next-prev" = "grey",     
+                   "once-rhythmic" = "grey", 
+                   "non-rhythmic" = "grey",  
+                   "rhythmic" = "Red",      
+                   "next-ab" = "grey",       
+                   "random" = "grey",        
+                   "no-data" = "grey")
+
+plotdouball <- ggplot(predicted.many3, aes(x = perc_prev, y =  d, alpha = I(0.8), fill =Rhythmicity, color = Rhythmicity)) +    
+  geom_point(aes(fill =Rhythmicity), size= 1, show.legend = F) +
+  scale_fill_manual(values= color_mapping)+   scale_color_manual(values= color_mapping)+
+  labs(x="Prevalence (%)" ,y = "Doubling time (hr)" ) + 
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(hjust = 1, size= 12,), axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())
+plotdouball
+
+#ggsave("all_bact_DoublingTimeDotplot.pdf", plot= plotdouball, width = 10, height = 7)
+
+dtplots <- cowplot::plot_grid(plotdouball, dtplotboot, ncol=2, 
+                   labels =c("A", "B"), label_size = 26,
+                   label_x = c(0.9,0.9))
+#ggsave("all_bact_bothDoublingTimeplot.pdf", plot= dtplots, width = 16, height = 6)
+
+### review the if family are related to the doubling time
+predicted.many3family <- predicted.many3 %>% filter(Family == "Bacteroidaceae" | Family == "Lachnospiraceae")
+shape_mapping <- c("lessprevalent" = 21, 
+                   "lessabundant" = 21,  
+                   "next-prev" = 21,     
+                   "once-rhythmic" = 21, 
+                   "non-rhythmic" = 21,  
+                   "rhythmic" = 22,      
+                   "next-ab" = 21,       
+                   "random" = 21,        
+                   "no-data" = 21)
+
+
+plotdoubfam <- ggplot(predicted.many3family, aes(x = perc_prev, y =  d, alpha = I(0.8),  fill = Family, shape = Rhythmicity )) +    
+    geom_point( size= 1, show.legend = F) +   scale_shape_manual(values= shape_mapping)+
+    labs(x="Prevalence (%)" ,y = "Doubling time (hr)" ) + 
+    theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(hjust = 1, size= 12,), axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank())
+plotdoubfam
+
+## nop, not related to family
+```
+
+Observed Mean Doubling time 1.035862 
+P-value (Mean doubling time): 0.0553
+
+## Genome properties
+
+The next step was to explore the gene content of these 101 bacteria.
+First we downloaded the Genbank genome files (gbff) to look the total of
+genes in the genomic annotated sequence. As in the previous step we used
+the ftp links and download in the bash console (notas_download_genomes).
+
+## Counting elements
+
+Using the bash console we search in these gbff files for regulatory
+elements. We notice that every element was called "transcriptional"
+followed by either regulator, dual regulator, activator or repressor. No
+other element or protein was called transcriptional in the genomes we
+reviewed, So we used the "transcriptional" term to search for the
+regulatory elements. We also search for the total count of genes and
+coding sequences (CDS) to build up a table.
+
+```{bash extract genes genome transcriptional regulators count}
+
+# gbff files downloaded from ncbi to the folder gbff_files
+output_csv="genome_sizes_summary_table_selected.csv"
+
+# Function to extract counts
+extract_counts() {
+    genes_count=$(awk '/^ +Genes \(total\) +::/ && !found_genes {gsub(/[^0-9]/, "", $NF); print $NF; found_genes=1}' "$1")
+    cds_count=$(awk '/^ +CDSs \(total\) +::/ && !found_cds {gsub(/[^0-9]/, "", $NF); print $NF; found_cds=1}' "$1")
+    echo "$genes_count,$cds_count"
+}
+
+# Header for the new column
+echo "species_name,regulators,genes,cds,genome_size" > "$output_csv"
+
+# Loop through each folder in uncomp_files
+for folder in gbff_files/*; do
+    if [ -d "$folder" ]; then
+        # Get the species name from the folder path
+        species_name=$(basename "$folder")
+
+        # Generate the transcriptional_regulators.txt file in the same folder
+        awk -v IGNORECASE=1 '
+            /transcriptional/ {
+                line = $0
+                while (getline > 0) {
+                    line = line " " $0
+                    if (/"/) break
+                }
+                gsub(/\n/, " ", line)
+                gsub(/ +/, " ", line)
+                print line
+            }
+        ' "$folder/${species_name}.gbff" > "$folder/transcriptional_regulators.txt"
+
+        # Count the number of regulators
+        regulators_count=$(wc -l < "$folder/transcriptional_regulators.txt")
+
+        # Get the genes and CDSs counts from the gbff file using the extract_counts function
+        counts=$(extract_counts "$folder/${species_name}.gbff")
+        IFS=',' read -r genes_count cds_count <<< "$counts"
+
+        
+        # Append the information to the CSV file
+        echo "$species_name,$regulators_count,$genes_count,$cds_count" >> "$output_csv"
+    fi
+done
+## file created genome_sizes_summary_table_juy23.csv
+
+## FNA files were downloaded from ncbi to genomic_fna_files
+### Now the genome size count from the fna files (downloaded in the same way the gbff)
+echo "species_name,genome_size_(bp)" > genome_size.csv
+
+# Path to the folder containing the FNA files 
+fna_folder="genomic_fna_files"
+
+# Loop through each FNA file in the folder
+for fna_file in "$fna_folder"/*.fna; do
+    # Get the species name from the file name (without extension)
+    species_name=$(basename "$fna_file" .fna)
+
+    # Calculate the genome size using BioPython
+    total_length=$(python3 -c "from Bio import SeqIO; print(sum(len(record.seq) for record in SeqIO.parse('$fna_file', 'fasta')))")
+
+    # Append the species name and genome size to the CSV file
+    echo "$species_name,$total_length" >> genome_size.csv
+done
+
+
+```
+
+The resulting list have the count of each element with exception of 15
+bacteria that have no Genes (total) nor CDSs (total). For that bacteria
+we manually count those elements searching for "CDS" (or protein_id) and
+for the total genes using "gene" in the document searcher. Let't look at
+the data
+
+
+```{r genome size bootstrap }
+
+#Aqui está tdo el resto 
+allgenomesizes <- read_csv("genome_size_all.csv")
+allgene.and.reg <- read_csv("genome_sizes_summary_table_all.csv") %>% select(-genome_size)
+
+allgenomedata <- full_join(allgenomesizes, allgene.and.reg)
+## add taxonomic levels
+
+taxfromdt <- read_csv ("taxonomic_levels_and_doubling_time616_2.csv") %>% select(Phylum, Family, Taxa )
+
+# Rhythmic and selected bacteria
+countsfinaltax <- merge(allgenomedata, taxfromdt)
+rhythgsize <- countsfinaltax  %>% select(taxa, genome_size_bp,regulators, genes, cds, Rhythmicity)
+
+allgsize.plusrhyt <- full_join(rhythgsize, allgenomedata, by = "taxa") %>%  mutate(genome_size_bp = coalesce(genome_size_bp.x, genome_size_bp.y),
+    regulators = coalesce(regulators.x, regulators.y), genes = coalesce(genes.x, genes.y), cds = coalesce(cds.x, cds.y)) %>%
+  select(-ends_with(".x"), -ends_with(".y")) %>%  distinct(taxa, .keep_all = TRUE)
+
+## we add a new column with the fraction
+allgsize.plusrhyt2 <- allgsize.plusrhyt %>% mutate ("Fraction_of_regulatory_genes" =regulators/genes) %>% mutate ("genomesizeMbp" = genome_size_bp/1000000)
+                                                    
+set.seed(7891)
+rhythmic_bacteria_size <- subset(allgsize.plusrhyt2, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+
+# Number of permutations
+num_permutations <- 10000 
+
+# Create vectors to store permutation results
+permuted_gsizemeans <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+   random_sample <- allgsize.plusrhyt2[!is.na(allgsize.plusrhyt2$genomesizeMbp), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  #  mean for the random sample
+  permuted_gsizemeans[i] <- mean(random_sample$genomesizeMbp)
+}
+
+observed_gsizemean <- mean(rhythmic_bacteria_size$genomesizeMbp, na.rm=T)
+
+# Calculate p-values
+p_value_mean_gsize <- mean(permuted_gsizemeans >= observed_gsizemean)
+
+# Print the results
+cat("Observed Mean Genome Size", observed_gsizemean , "\n")
+cat("P-value (Mean Genome Size):", p_value_mean_gsize, "\n")
+
+perm_gsize <- as.data.frame(permuted_gsizemeans)
+
+gsizebootsplot <- ggplot() + geom_density(aes(perm_gsize$permuted_gsizemeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_gsizemean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value < 0.05", sep = ""), 
+         x = "Mean Genome Size (Mbp)", y = "Density")+ theme(panel.background = element_rect(fill = "white", colour = "black", size = 1))
+#ggsave("densityplot_genomesize_bootstrap.pdf",plot= gsizebootsplot, width = 5, height = 4)
+
+## a general plot with taxonomy
+
+taxphylym <- read_csv ("taxonomic_levels_and_doubling_time616_2.csv") %>% select(Phylum, Family, Taxa ) %>% dplyr::rename(taxa = "Taxa")
+## We merge the data with partial match
+ci_str_detect <- function(x, y){str_detect(x, regex(y, ignore_case = TRUE))} # to match part of the name
+allgsize.plusrhyt3 <- fuzzyjoin::fuzzy_left_join(allgsize.plusrhyt2, taxphylym, by = "taxa" , match_fun = ci_str_detect) %>% select(taxa.x,taxa.y, Phylum, everything()) %>% select(-taxa.y) %>% dplyr::rename(taxa = "taxa.x")
+allgsize.plusrhyt3$Rhythmicity[is.na(allgsize.plusrhyt3$Rhythmicity)] = "no-data"
+
+#ploting
+
+color_mapping <- c("lessprevalent" = "grey", 
+                   "lessabundant" = "grey",  
+                   "next-prev" = "grey",     
+                   "once-rhythmic" = "grey", 
+                   "non-rhythmic" = "grey",  
+                   "rhythmic" = "Red",      
+                   "next-ab" = "grey",       
+                   "random" = "grey",        
+                   "no-data" = "grey")
+
+plotgz <- ggplot(allgsize.plusrhyt3, aes(x = genome_size_bp/1000000, y = regulators, alpha = I(0.8), fill =Rhythmicity, color = Rhythmicity)) +    geom_point(aes(fill =Rhythmicity), size= 1, show.legend = F) +
+  scale_fill_manual(values= color_mapping)+   scale_color_manual(values= color_mapping)+
+  labs(x="Genome size (Mbp)", y = "Count of regulatory genes" ) + 
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(hjust = 1, size= 12,), axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())
+plotgz
+
+gsizefrplots <- cowplot::plot_grid(plotgz, gsizebootsplot, ncol=2, 
+                   labels =c("A", "B"), label_size = 26,
+                   label_x = c(0.9,0.9))
+
+gsizefrplots
+#ggsave("genomesize_andfraction_bootstrap.pdf",plot= gsizefrplots, width = 10, height = 4)
+
+```
+
+Observed Mean Genome Size 4473278 P-value (Mean Genome Size): 0.0083 (probability of the permuted genome size of being higher than the rhythmic genome size)
+
+The genome size is higher than expected by chance!
+
+```{r gene count and transcriptional regulators bootstrap , fig.width = 10, fig.height = 8}
+## gene count
+#####
+set.seed(7891)
+rhythmic_bacteria_size <- subset(allgsize.plusrhyt2, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+num_permutations <- 10000 
+
+# Create vectors
+permuted_genemeans <- numeric(num_permutations)
+
+# Permutations
+for (i in 1:num_permutations) {
+  random_sample <- allgsize.plusrhyt[!is.na(allgsize.plusrhyt2$genes), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+    # mean for the random sample
+  permuted_genemeans[i] <- mean(random_sample$genes)
+}
+
+observed_genemean <- mean(rhythmic_bacteria_size$genes, na.rm=T)
+
+# Calculate p-values
+p_value_mean_genes <- mean(permuted_genemeans >= observed_genemean)
+
+# Print the results
+cat("Observed Mean Gene count", observed_genemean , "\n")
+cat("P-value (Mean Gene):", p_value_mean_genes, "\n")
+
+perm_gene <- as.data.frame(permuted_genemeans)
+
+genecountplot <- ggplot() + geom_density(aes(perm_gene$permuted_genemeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_genemean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value = ", p_value_mean_genes, sep = ""), 
+         x = "Mean Count of Genes", y = "Density")+ theme(axis.text.y = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        panel.background = element_rect(fill = "white", colour = "black", size = 1),
+        axis.text.x = element_text(size = 13),
+        axis.title.x = element_text(size = 13),
+        legend.position="none", 
+        plot.title = element_text(size= 13, hjust = 0.2) )
+#ggsave("genecount_bootstrap.pdf",plot= genecountplot, width = 5, height = 4)
+
+### plot the proportion of genes and genome size
+#####
+# two bacteria don't have the data so we delete them to make the linear relationship
+allgsize.plusrhyt3.2 <- allgsize.plusrhyt3 %>% filter(taxa != "Anaeroglobus_geminatus" & taxa != "Rothia_aeria")
+ 
+rsquaredgevsgz <- summary(lm(genes ~ genome_size_bp, data = allgsize.plusrhyt3.2))$r.squared
+
+plotgenec <-ggplot(allgsize.plusrhyt3.2, aes(x =genome_size_bp/1000000, y = genes, alpha = I(0.5), color = Rhythmicity)) +  geom_point(size= 1, show.legend= F)  + 
+  scale_color_manual(values= color_mapping)+
+  labs(x = "Genome size (Mbp)", y ="Gene count" ) +
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(hjust = 1, size= 12,), axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())+ geom_smooth(method = "lm", se = FALSE, linetype = "solid", color = "black", size = 0.5) +
+    annotate("text", x = 8, y = 7800, label = paste0("R² = ", round(rsquaredgevsgz, 3)),
+             hjust = 1.5, vjust = 1, size = 7, color = "black")
+
+#ggsave("genomesizvseGenecount.pdf", plot= plotgenec ,width = 5, height = 4)
+
+
+## mode of the plot
+
+density_gene <- ggplot_build(genecountplot)$data[[1]]
+mode_gene <- density_gene %>% filter(y == max(y)) %>% select(x) %>%  pull()
+
+## regulators vs gene count
+rsquaredgevsreg <- summary(lm(genes ~ regulators, data = allgsize.plusrhyt3.2))$r.squared
+
+plotgenevsreg <-ggplot(allgsize.plusrhyt3.2, aes(x =regulators, y = genes, alpha = I(0.5), color = Rhythmicity)) +  geom_point(size= 1, show.legend= F)  +   scale_color_manual(values= color_mapping)+
+  labs(x = "Regulators count", y ="Gene count" ) +
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(hjust = 1, size= 12,), axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())+ geom_smooth(method = "lm", se = FALSE, linetype = "solid", color = "black", size = 0.5) +
+    annotate("text", x = Inf, y = 8090, label = paste0("R² = ", round(rsquaredgevsreg, 3)),
+             hjust = 1.5, vjust = 1, size = 7, color = "black")
+plotgenevsreg
+
+# regulatory genes bootstrap
+#####
+set.seed(7891)
+rhythmic_bacteria_size <- subset(allgsize.plusrhyt2, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+num_permutations <- 10000 
+
+# Create vectors to store permutation results
+permuted_regmeans <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- allgsize.plusrhyt2[!is.na(allgsize.plusrhyt2$regulators), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_regmeans[i] <- mean(random_sample$regulators)
+}
+
+observed_rmean <- mean(rhythmic_bacteria_size$regulators, na.rm=T)
+
+# Calculate p-values
+p_value_mean_reg <- mean(permuted_regmeans >= observed_rmean)
+
+# Print the results
+cat("Observed Mean Regulatory Genes", observed_rmean , "\n")
+cat("P-value (Mean  Regulatory Genes):", p_value_mean_reg, "\n")
+
+perm_reg <- as.data.frame(permuted_regmeans)
+
+regbootsplot <- ggplot() + geom_density(aes(perm_reg$permuted_regmeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_rmean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value = ", p_value_mean_reg, sep = ""), 
+         x = "Mean Count regulatory genes", y = "Density") + theme(axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        panel.background = element_rect(fill = "white", colour = "black", size = 1),
+        axis.text.x = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        legend.position="none", 
+        plot.title = element_text(size= 14, hjust = 0.2) )
+
+## save all plots 
+genecounttwoplots <- cowplot::plot_grid(plotgenec, genecountplot, regbootsplot, ncol=2, nrow=2, labels =c("A", "B", "C"), label_size = 26, label_x = c(0.84,0.84),  label_y = c(0.95,0.95))
+
+genecounttwoplots
+#ggsave("genecountanddistplot.pdf", plot= genecounttwoplots ,width = 10, height = 8)
+
+# Fraction of regulatory
+#####
+
+# fraction of regulators
+
+set.seed(7891)
+rhythmic_bacteria_size <- subset(allgsize.plusrhyt2, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+num_permutations <- 10000 
+
+# Create vectors to store permutation results
+permuted_frregmeans <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- allgsize.plusrhyt2[!is.na(allgsize.plusrhyt2$Fraction_of_regulatory_genes), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_frregmeans[i] <- mean(random_sample$Fraction_of_regulatory_genes)
+}
+
+observed_frmean <- mean(rhythmic_bacteria_size$Fraction_of_regulatory_genes, na.rm=T)
+
+# Calculate p-values
+p_value_mean_frreg <- mean(permuted_frregmeans >= observed_frmean)
+
+# Print the results
+cat("Observed Mean Fraction of Regulatory Genes", observed_frmean , "\n")
+cat("P-value (Mean Fraction of Regulatory Genes):", p_value_mean_frreg, "\n")
+
+perm_fr <- as.data.frame(permuted_frregmeans)
+
+fractbootsplot <- ggplot() + geom_density(aes(perm_fr$permuted_frregmeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_frmean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value = ", p_value_mean_frreg, sep = ""), 
+         x = "Mean Fraction of Regulatory Genes", y = "Density")+ theme(panel.background = element_rect(fill = "white", colour = "black", size = 1))
+
+
+gsizefrplots <- cowplot::plot_grid(plotgz, gsizebootsplot, fractbootsplot, ncol=2, 
+                   labels =c("A", "B", "C"), label_size = 26,
+                   label_x = c(0.9,0.9))
+#ggsave("genomesize_andfraction_bootstrap.pdf",plot= gsizefrplots, width = 10, height = 4)
+library(cowplot)
+
+# create the figure
+column1.1 <- plot_grid(
+  plotgz, 
+  labels = "A", 
+  label_size = 20, 
+  label_x = 0.02, 
+  label_y = 1.0 
+)
+
+# Create the second column with plots B and C
+column2.2 <- plot_grid(
+  plot_grid(gsizebootsplot, labels = "B", label_size = 20, label_x = 0.02, label_y = 1.0), 
+  plot_grid(fractbootsplot, labels = "C", label_size = 20, label_x = 0.02, label_y = 1.0),  
+  ncol = 1
+)
+
+# Combine the columns into the final plot
+gsizefrplots <- plot_grid(
+  column1.1, 
+  column2.2, 
+  ncol = 2, 
+  rel_widths = c(1, 1) 
+)
+
+
+# Add label "C" to the third plot
+gsizefrplots <- plot_grid(gsizefrplots, labels = "C", label_size = 20, label_x = 0.93, label_y = 0.5)
+gsizefrplots
+#ggsave("genomesize_andBOTH_bootstrap.pdf",plot= gsizefrplots, width = 10, height = 4)
+#ggsave("genomesize_andBOTH_bootstrap.png",plot= gsizefrplots, width = 10, height = 4)
+
+### now we plot using the taxonomic association to look 
+#####
+taxfromdt <- read_csv ("taxonomic_levels_and_doubling_time616_2.csv") %>% select(Phylum, Family, Taxa )
+
+allgsize.plusrhyt3.2 <- left_join(allgsize.plusrhyt3.2, taxfromdt)
+
+allgsize.plusrhyt3.3 <- allgsize.plusrhyt3.2 %>% filter(Family == "Bacteroidaceae" | Family == "Lachnospiraceae")
+
+allgsize.plusrhyt3.4 <- allgsize.plusrhyt3.2 %>% filter(Phylum == "Firmicutes" | Phylum == "Bacteroidetes")
+
+lm_model <- lm(regulators ~ 0 + genomesizeMbp, data = allgsize.plusrhyt3.4)
+plotgzvs2 <-ggplot(allgsize.plusrhyt3.4, aes(x =genes , y = regulators, shape =Rhythmicity, alpha = I(0.7), fill =Phylum)) +    geom_point(aes(fill =Phylum), size= 5)  +  scale_shape_manual(values = shape_mapping )+ geom_smooth(aes(group= Phylum), method = "lm", se = FALSE, linetype = "solid", color = "black") + 
+    labs(x = "Gene count", y ="Regulators count" ) + 
+   theme(axis.text.x = element_text(size = 22, face = "bold"), axis.text.y = element_text(size = 22, face = "bold"), axis.title.x = element_text(size = 26, face = "bold"), axis.title.y = element_text(size = 26, face = "bold"), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_text(size=4))#, legend.title = element_text(size = 4, face ="bold"))+  
+   guides(alpha= "none", size = "none", shape= "none") # +
+            # geom_abline(intercept = 0, slope = coef(lm_model), color = "red", linetype = "dashed") +
+plotgzvs2
+
+
+lm_models <- by(allgsize.plusrhyt3.4, allgsize.plusrhyt3.4$Phylum, function(subdata) {
+  lm(regulators ~ genes, data = subdata)
+})
+
+# Extract the summaries for each model
+summaries <- lapply(lm_models, summary)
+
+```
+
+Observed Mean Gene count 3928 P-value (Mean Gene): 0.0193 (probability of the permuted group of having a mean higher than the rhythmic mean gene count)
+
+Observed Mean number Regulatory Genes 115.875 
+P-value (Mean Regulatory Genes): 0.4421
+
+Observed Mean Fraction of Regulatory Genes 0.03165738 
+P-value (Mean Fraction of Regulatory Genes): 0.7713
+
+
+### Metabolic models reconstruction
+
+Then with the gbff files we build the metabolic models using
+metage2metabo (m2m) package installed in python running this code in the
+bash console using the gbff genome :
+
+```{bash}
+m2m recon -g uncomp_files -o m2m_output_selected -c 8
+```
+
+The recon function from m2m creates the sbml with the Genome Scale
+Metabolic Models (GSMs). These models where transformed to a graphml format in
+jupyter lab using python 3:
+
+
+```{python}
+import os 
+import cobra 
+import networkx 
+import igraph 
+import warnings
+import sys
+
+def SBML2NetworkX(model): 
+  graph = networkx.DiGraph() 
+  name_to_index = {}
+# Mapping for node names to indices
+
+    for reaction in model.reactions:
+        for reactant in reaction.reactants:
+            reactant_name = reactant.id
+            if reactant_name not in name_to_index:
+                name_to_index[reactant_name] = reactant_name  
+        
+        for product in reaction.products:
+            product_name = product.id
+            if product_name not in name_to_index:
+                name_to_index[product_name] = product_name 
+        
+        for reactant in reaction.reactants:
+            reactant_name = reactant.id
+            for product in reaction.products:
+                product_name = product.id
+                if (reactant_name[-1:] != 'e') and (product_name[-1:] != 'e'):
+                    source_name = name_to_index[reactant_name]  
+                    target_name = name_to_index[product_name]  
+                    graph.add_edge(source_name, target_name)
+                    if reaction.reversibility:
+                        graph.add_edge(target_name, source_name)
+
+    return graph
+
+input_dir = "m2m_output_selected/sbml"
+output_dir = "m2m_output_selected/sbml/igraph_objects"
+warnings_dir = os.path.join(output_dir, "warnings")
+
+if not os.path.exists(warnings_dir): os.makedirs(warnings_dir)
+
+# Get a list of all SBML files
+
+sbml_files = [file for file in os.listdir(input_dir) if
+file.endswith(".sbml")]
+
+# COBRA generates many warning for these models because they don't have boundaries. Function to write warnings to log file:
+
+def log_warnings(message, category, filename, lineno, file=None,
+line=None): model_name = os.path.splitext(os.path.basename(filename))[0]
+log_file = os.path.join(warnings_dir, f"{model_name}\_warnings_log.txt")
+with open(log_file, 'a') as log: log.write(f"Warning: {message}\n")
+
+# Redirect warnings to a log file for each model
+
+warnings.showwarning = log_warnings
+
+# Create the corresponding GraphML file
+
+for sbml_file in sbml_files: # Redirect warnings to a log file for this
+model warnings.showwarning = log_warnings
+
+    model = cobra.io.read_sbml_model(os.path.join(input_dir, sbml_file))
+
+    # Convert the SBML model to a networkx graph
+    graph = SBML2NetworkX(model)
+
+    # Create an igraph graph directly from the networkx graph without converting node labels
+    gig = igraph.Graph.TupleList(graph.edges, directed=True)
+
+    # Assign node names to the igraph vertices
+    node_names = list(graph.nodes)
+    gig.vs["name"] = node_names
+
+    # Save the igraph object as a GraphML file with the same name as the SBML file
+    output_file = os.path.splitext(sbml_file)[0] + ".graphml"
+    gig.write_graphml(os.path.join(output_dir, output_file))
+
+print("GraphML files have been saved to:", output_dir)
+```
+
+```{r metabolic network size bootstrap comparing other bacteria with rhythmic}
+
+# These igraph objects are the metabolic reconstruction of other bacteria from the gut microbiota
+listoffiles2 <- list.files(path = "metmodels_all/igraph_objects", pattern = ".graphml",  recursive = T, full.names = T)
+
+midata2 <- sapply(listoffiles2, function(x)read_graph(x, format= c("graphml")))
+
+# Cleaning the names 
+
+bactnames2 <- as.data.frame(listoffiles2)
+bactnames2$listoffiles2 <- str_replace(bactnames2$listoffiles2, "metmodels_all/igraph_objects/", "")
+bactnames2$listoffiles2 <- str_replace(bactnames2$listoffiles2, ".graphml", "")
+
+names(midata2) <- c(bactnames2$listoffiles2) # here the names are changed
+
+netw_df2 <- data.frame(File = character(), Nodes = integer(), stringsAsFactors = FALSE)
+
+# fill the data frame
+for (i in seq_along(midata2)) {
+  graph <- midata2[[i]]
+  nodes_count <- vcount(graph)
+  edges_count <- ecount(graph)
+  netw_df2 <- rbind(netw_df2, data.frame(File = names(midata2)[i], Nodes = nodes_count, Edges = edges_count))
+}
+
+metnetdatasbml2.all <-netw_df2 %>% dplyr::rename(taxa= "File")
+
+
+statsshortname <- read_csv ("stats_reference_gutmbt_chapter1.csv") %>% select(-min_abRel, -max_abRel, -sd, -var)
+
+## some names in the metabolic models are different so we need to change them
+change <- tibble(oldname = c("Lactobacillus_reuteri", "Clostridium_hiranonis","Bacteroides_dorei", "Bacteroides_plebeius", "Bacteroides_vulgatus", "Clostridium_hiranonis", "Lactobacillus_reuteri", "Eubacterium_eligens", "Ruminococcus_lactaris", "Enterorhabdus_caecimuris", "Bacteroides_massiliensis", "Escherichia_coli"),
+                  newname = c("Limosilactobacillus_reuteri", "Peptacetobacter_hiranonis","Phocaeicola_dorei", "Phocaeicola_plebeius", "Phocaeicola_vulgatus", "Peptacetobacter_hiranonis", "Limosilactobacillus_reuteri", "Eubacterium_eligens_ATCC_27750", "Ruminococcus_lactaris_ATCC_29176", "Adlercreutzia_caecimuris", "Phocaeicola_massiliensis", "Escherichia_coli_str_K-12_substr_MG1655"))
+statsandsel <- statsshortname %>% mutate( taxa = case_when( taxa %in% change$oldname ~ change$newname[match(taxa, change$oldname)],
+      TRUE ~ taxa)) %>% arrange(taxa)
+
+metnetdatasbml2.all$taxa <- str_replace(metnetdatasbml2.all$taxa, "Ruminococcus_gnavus_ATCC_29149", "Ruminococcus_gnavus")
+
+## Two of the genomes used to reconstruct the metabolic networks, are suppressed (march 2024) in NIH due to contamination
+
+metnetdatasbml2.all <- metnetdatasbml2.all %>%  filter(taxa != "Firmicutes_bacterium_CAG_83" & taxa != "Agathobaculum_butyriciproducens")
+
+#write_csv(metnetdatasbml2.all, "metnew_size_all_bact.csv")
+
+allandrhyth <- left_join(metnetdatasbml2.all, statsandsel) 
+
+#write_csv(allandrhyth, "metnet_nodes_stats_all616_andrhyth.csv")
+
+# Separated groups most abundant and most prevalent
+
+allabund <- allandrhyth %>% filter( Abundance_rank <= 100 |Rhythmicity== "rhythmic")
+
+allprev <- allandrhyth %>% filter(prevalence_rank <= 100|Rhythmicity== "rhythmic")
+
+
+## Now iterate and calculate pvalues
+bootstrmetsize <- function(datanodes){
+  set.seed(7891)
+rhythmic_bacteria <- subset(datanodes, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria)
+
+# Number of permutations
+num_permutations <- 10000  
+
+# Create vectors to store permutation results
+permuted_means <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- datanodes[!is.na(datanodes$Nodes), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_means[i] <- mean(random_sample$Nodes)
+  
+}
+return(permuted_means)
+}
+rhythmic_bacteria <- subset(allandrhyth, Rhythmicity== "rhythmic")
+## apply for the three datasets
+mostabund <- bootstrmetsize(allabund)
+mostprev <- bootstrmetsize(allprev)
+everyone <- bootstrmetsize(metnetdatasbml2.all)
+
+# Calculate observed mean nodes for rhythmic bacteria
+observed_rhythmic_means <- mean(rhythmic_bacteria$Nodes, na.rm=T)
+
+# Calculate p-values
+p_value_mean_ab <- mean(mostabund >= observed_rhythmic_means)
+p_value_mean_prev <- mean(mostprev >= observed_rhythmic_means)
+p_value_mean_all <- mean(everyone >= observed_rhythmic_means)
+
+# Print the results AQUI AGREGAR LOS Q FALTAN
+cat("Mean metabolic network size rhythmic bacteria:", observed_rhythmic_means, "\n")
+cat("P-value (Mean metabolic network size) rhythmic vs top hundred abundant:", p_value_mean_ab, "\n")
+perm_nodes_ab <- as.data.frame(mostabund)
+cat("P-value (Mean metabolic network size) rhythmic vs top hundred prevalent:", p_value_mean_prev, "\n")
+perm_nodes_prev <- as.data.frame(mostprev)
+cat("P-value (Mean metabolic network size) rhythmic vs all bacteria:", p_value_mean_all, "\n")
+perm_nodes_all <- as.data.frame(everyone)
+
+## Density plots
+bootplot1 <- ggplot() + geom_density(aes(perm_nodes_ab$mostabund, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_rhythmic_means), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value ", p_value_mean_ab, sep = ""), 
+       x = "Network size (Mean # nodes)", y = "Density")+ theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.2) )
+
+bootplot2 <-ggplot() + geom_density(aes(perm_nodes_prev$mostprev, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_rhythmic_means), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value ", p_value_mean_prev, sep = ""), 
+       x = "Network size (Mean # nodes)", y = "Density") +theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.5) )
+
+bootplotall <- ggplot() + geom_density(aes(perm_nodes_all$everyone, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_rhythmic_means), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value ", p_value_mean_all, sep = ""), 
+       x = "Network size (Mean # Nodes)", y = "Density") +theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.5) )
+
+nodesbootstrap<-cowplot::plot_grid(bootplot1, bootplot2, ncol= 2, labels =c("A", "B"), label_size = 24,
+                            label_x = c(0.0,0.0))
+#ggsave("bootstrapresults.pdf",plot= nodesbootstrap, width = 10, height = 4)
+
+nodesandbootsplots <- cowplot::plot_grid(plotnodes,plotnodes1, plotnodes3,  plotnodes4, plotnodes5, plotnodes6, bootplotall, ncol= 3, nrow= 3, 
+                   labels =c("A", "B", "C", "D", "E", "F", "G"), label_size = 26,
+                   label_x = c(0.9,0.9, 0.9, 0.9, 0.9,0.9, 0.9),
+                   label_y = c(0.98,0.98,0.98,0.98,0.98,0.98, 0.93))
+#ggsave("sizemetnetplotsalldensity.pdf",plot= nodesandbootsplots, width = 18, height = 14)
+
+
+### Now we add to a general view, the genome size and count of genomic elements
+
+allandrhythgen <- left_join(allandrhyth, allgsize.plusrhyt3.2, by = "taxa")
+  
+plotnetsvsgenome <-ggplot(allandrhythgen, aes(x =genome_size_bp/1000000, y = Nodes, alpha = I(0.7), color = Rhythmicity.y)) +  geom_point(size= 1, show.legend= F)  +    scale_color_manual(values= color_mapping)+
+  labs(x = "Genome size (Mbp)", y ="Metabolic network size (nodes)" ) +
+  theme(axis.text.x = element_text(size = 18), axis.text.y = element_text(hjust = 1, size= 16,), axis.title.x = element_text(size = 20), axis.title.y = element_text(size = 16), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())
+
+plotnetsvsgenome
+#####
+rsquared.genvsntw <- summary(lm(Edges ~ Nodes, data = allandrhythgen))$r.squared
+
+plotgenevsnetw <-ggplot(allandrhythgen, aes(x =Nodes, y = Edges, alpha = I(0.3), color = Rhythmicity.y)) +  geom_point(size= 0.8, show.legend= F)  + 
+  scale_color_manual(values= color_mapping)+
+  labs(x ="Nodes count", y ="Edges count") +
+  theme(axis.text.x = element_text(size = 18), axis.text.y = element_text(hjust = 1, size= 18,), axis.title.x = element_text(size = 20), axis.title.y = element_text(size = 18), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())+ geom_smooth(method = "lm", se = FALSE, linetype = "solid", color = "black", size = 0.1) +
+    annotate("text", x = Inf, y = 11090, label = paste0("R² = ", round(rsquared.genvsntw, 3)),
+             hjust = 1.5, vjust = 1, size = 7, color = "black")
+
+plotgenevsnetw 
+metnetsizeall <- cowplot::plot_grid(plotgenevsnetw, plotnetsvsgenome, bootplotall,ncol= 2, nrow= 2, 
+                   labels =c("A", "B", "C"), label_size = 26,
+                   label_x = c(0.93,0.93, 0.93),
+                   label_y = c(0.98,0.98,0.95))
+metnetsizeall
+#ggsave("sizemetnet_genomesize_bootstrap.pdf", plot= metnetsizeall, width = 18, height = 14)
+```
+
+Mean metabolic network size rhythmic bacteria: 1494.75 P-value (Mean
+metabolic network size) rhythmic vs top hundred abundant: 0.0057 P-value
+(Mean metabolic network size) rhythmic vs top hundred prevalent: 0.003
+P-value (Mean metabolic network size) rhythmic vs all bacteria: 0.4191
+
+## Metabolic Pathways
+
+Next we wanted to compare the amount of metabolic pathways related to
+degradation or assimilation of compounds. Using bash console we extract
+all metabolic pathways identified on the representative genomes from the
+pathways.dat pathway tools report and created a matrix.
+
+First create a new file with all the metabolic pathways
+
+```{bash pathway matrix}
+# Loop through each species folder creating the path_common_names.dat file with pathways name
+
+for folder in
+ m2m_output_selected/pgdb/*;do
+
+    if [ -d "$folder" ]; then
+        species_name=$(basename "$folder")
+        dat_file="$folder/pathways.dat"
+        common_names_file="$folder/path_common_names.dat"
+        
+        # Extract and format common names, then save to new file
+        grep "COMMON-NAME - " "$dat_file" | sed 's/COMMON-NAME - //' | sed 's/.*/"&"/' > "$common_names_file"
+        
+        echo "Processed $species_name"
+    fi
+done
+
+## create a list of all the metabolic pathways present in the reference organisms
+
+# search all the "commun names" in pathways.dat files
+
+output_file="all_Commun_names_class.txt"
+
+find m2m_output_selected/pgdb -name "pathways.dat" -print0 | while IFS= read -r -d $'0' dat_file; do
+   grep -i "COMMON-NAME" "$dat_file" | sort | uniq >> "$output_file"
+done
+
+# filtering to unique
+
+input_file="all_Commun_names_class.txt"
+
+output_file="unique_Commun_names_class.txt"
+
+sort "$input_file" | uniq > "$output_file"
+
+## Then we create the matrix with 1 or 0 for the presence of the pathway on each organism path_common_name.dat file.
+
+input_common_names_file="unique_Commun_names_class.txt"
+output_matrix_file="pathway_matrix.csv"
+
+# Get a list of all species folders
+
+species_folders=\$(find /pgdb -mindepth 1 -maxdepth 1 -type d)
+
+# Initialize header with species names
+
+header="COMMON_NAME" 
+for folder in $species_folders; do
+   species_name=$(basename "$folder")
+   header+=",$species_name" 
+done
+
+# Write header to output file
+
+echo "$header" > "$output_matrix_file"
+
+# Loop through each COMMON-NAME in the input file
+
+while IFS= read -r common_name_line; do
+common_name="${common_name_line#*- }" # Remove "COMMON-NAME - " part  quoted_common_name="\"$common_name""
+\# Enclose in double quotes
+
+    # Initialize row with quoted pathway name
+    row="$quoted_common_name"
+
+    # Loop through each species folder to search in pathways.dat
+    for folder in $species_folders; do
+        species_name=$(basename "$folder")
+        dat_file="$folder/path_common_names.dat"
+        
+        if grep -Fq -i "$quoted_common_name" "$dat_file"; then # Use -F flag for fixed string search
+            row+=",1"
+        else
+            row+=",0"
+        fi
+    done
+
+    # Write row to output file
+    echo "$row" >> "$output_matrix_file"
+
+done  "$input_common_names_file"
+```
+
+
+```{bash classifying pathways}
+### classification of pathways all genomes
+
+output_csv="doubleTypes_Common_Names_all.csv"
+
+# Get a list of all species folders
+species_folders=$(find m2m_output_selected/pgdb -mindepth 1 -maxdepth 1 -type d)
+
+# Initialize the output file with a header
+echo "\"COMMON_NAME\",\"TYPES1\",\"TYPES2\"" > "$output_csv"
+
+# Loop through each folder to process "pathways.dat" files
+for folder in $species_folders; do
+    species_name=$(basename "$folder")
+    dat_file="$folder/pathways.dat"
+    folder_name=$(basename "$folder")
+    echo "Processing folder: $folder_name"
+
+    common_name=""
+    types1=""
+    types2=""
+
+    while IFS= read -r line; do
+        if [[ $line == "TYPES - "* ]]; then
+            # Extract the TYPES value
+            if [ -z "$types1" ]; then
+                types1="${line#TYPES - }"
+            else
+                types2="${line#TYPES - }"
+            fi
+        elif [[ $line == "COMMON-NAME - "* ]]; then
+            # Extract the COMMON-NAME value
+            common_name="${line#COMMON-NAME - }"
+
+            # Write to the output file
+            echo "\"$common_name\",\"$types1\",\"$types2\"" >> "$output_csv"
+            
+            # Reset types1 and types2 for the next entry
+            types1=""
+            types2=""
+        fi
+    done < "$dat_file"
+done
+
+##### now filter to unique combination of the three columns
+
+awk -F, '!seen[$0]++' "doubleTypes_Common_Names_all.csv" > "doubletypesUnique_Combinations_all.csv"
+
+
+```
+Then we process the data in the matrix file
+Next we tested with bootstrap
+
+```{r pathway count metabolic networks all bacteria bootstrap}
+typesfromrec <-read_csv("doubletypesUnique_Combinations_selected.csv")
+
+# This is the matrix of all pathways .
+metabolicpathmatrix.all <- read_csv("pathway_matrix.csv")
+
+row_sums <- as.data.frame(rowSums(metabolicpathmatrix.all[, 2:ncol(metabolicpathmatrix.all)])) # none is 0
+
+metpathwithclass.all <- left_join(metabolicpathmatrix.all, typesfromrec) %>% select(TYPES2, TYPES1, COMMON_NAME, everything())
+
+metpathcommnam.all <- metpathwithclass.all %>% select(-TYPES2, -TYPES1) %>%  dplyr::distinct(COMMON_NAME, .keep_all =T)
+
+#write_csv(metpathwithclass.all, "metmatrixwithclasses.csv")
+## total pathway by species
+allpathwbysp.all <- as.data.frame(colSums(metpathcommnam.all[2:ncol(metpathcommnam.all)])) %>% dplyr::rename (total_pathways = "colSums(metpathcommnam.all[2:ncol(metpathcommnam.all)])")
+allpathwbysp.all <-  tibble::rownames_to_column(allpathwbysp.all, "taxa")
+allpathwbysp.all$taxa <- gsub("Ruminococcus_gnavus_ATCC_29149", "Ruminococcus_gnavus", allpathwbysp.all$taxa)
+
+allpathwr <- allpathwbysp.all   select(taxa, Rhythmicity, total_pathways) %>%   distinct(taxa, .keep_all = TRUE) 
+
+## filter the two genome suppressed bacteria
+
+allpathwr <- allpathwr %>%  filter(taxa != "Firmicutes_bacterium_CAG_83" & taxa != "Agathobaculum_butyriciproducens")
+## Now we bootstrap to see if rhythmic bacteria have higher number of metabolic pathways than expected by chance
+
+set.seed(7891)
+
+# Extract the rhythmic bacteria
+rhythmic_bacteria <- subset(allpathwr, Rhythmicity == "rhythmic")
+
+# Number of rhythmic bacteria
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria)
+
+# Number of permutations
+num_permutations <- 10000  
+# vectors to store permutation results
+permuted_meanpathw <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- allpathwr[!is.na(allpathwr$total_pathways), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_meanpathw[i] <- mean(random_sample$total_pathways)
+}
+
+# Calculate observed means and percentage of prevalence for rhythmic bacteria
+observed_meanpathw <- mean(rhythmic_bacteria$total_pathways, na.rm=T)
+# Calculate p-values
+p_value_meanpathw <- mean(permuted_meanpathw >= observed_meanpathw)
+
+# Print the results
+cat("Observed Mean number of pathways:", observed_meanpathw, "\n")
+cat("P-value (Mean number pathways):", p_value_meanpathw, "\n")
+
+perm_meanpathw<- as.data.frame(permuted_meanpathw)
+
+meanpathwboot <-ggplot() + geom_density(aes(perm_meanpathw$permuted_meanpathw, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_meanpathw), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value ", p_value_meanpathw, sep = ""), 
+       x = "Mean pathways count", y = "Density") + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.2))
+#ggsave("pathwayscount_bootstrap.pdf",plot= meanpathwboot, width = 5, height = 4)
+
+### Looking at degradation pathways
+metabolicpathmatrix <- read_csv("pathway_matrix.csv")
+
+metpathplusrhyth <- full_join(metpathwithclass.all, metabolicpathmatrix)
+degradationpath.all <- metpathplusrhyth %>% filter(grepl("deg", COMMON_NAME, ignore.case = T) |  grepl("deg", TYPES1, ignore.case = TRUE)|  grepl("assimilat", COMMON_NAME, ignore.case = TRUE) | grepl("assimilat", TYPES2, ignore.case = TRUE))
+
+degradationpath.all2 <- degradationpath.all %>% select(-TYPES1, -TYPES2) %>%  dplyr::distinct(COMMON_NAME, .keep_all =T)
+degradationpath.all2[is.na(degradationpath.all2)] = 0
+
+
+## Total metabolic pathways
+total.deg <- as.data.frame(colSums(degradationpath.all2[2:ncol(degradationpath.all2)])) %>% dplyr::rename (total_pathways = "colSums(degradationpath.all2[2:ncol(degradationpath.all2)])")
+
+total.deg <-rownames_to_column(total.deg, var = "taxa")
+## Then we add the class rhythmic
+rhyth <- read_csv ("selected_bacteria2.csv") %>% select(taxa, Rhythmicity) 
+
+total.deg2 <- left_join(total.deg, rhyth, by ="taxa")
+total.deg2[is.na(total.deg2)] = "no-data"
+
+#ggsave("bootstrappathways.pdf",plot= pathwbootstrap, width = 15, height = 4)
+
+## Now we bootstrap to see if rhythmic bacteria have higher number of metabolic pathways than expected by chance
+
+set.seed(7891)
+
+# Extract the rhythmic bacteria
+rhythmic_bacteria <- subset(total.deg2, Rhythmicity == "rhythmic")
+
+# Number of rhythmic bacteria
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria)
+
+# Number of permutations
+num_permutations <- 10000  
+# vectors to store permutation results
+permuted_meanpdeg <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- total.deg2[!is.na(total.deg2$total_pathways), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_meanpdeg[i] <- mean(random_sample$total_pathways)
+}
+
+# Calculate observed means and percentage of prevalence for rhythmic bacteria
+observed_meanpdeg <- mean(rhythmic_bacteria$total_pathways, na.rm=T)
+# Calculate p-values
+p_value_meanpdeg <- mean(permuted_meanpdeg >= observed_meanpdeg)
+
+# Print the results
+cat("Observed Mean number of degradation pathways:", observed_meanpdeg, "\n")
+cat("P-value (Mean number of degradation pathways):", p_value_meanpdeg, "\n")
+
+perm_meanpdeg<- as.data.frame(permuted_meanpdeg)
+
+meanpathw.degboot <-ggplot() + geom_density(aes(perm_meanpdeg$permuted_meanpdeg, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_meanpdeg), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value ", p_value_meanpdeg, sep = ""), 
+       x = "Mean degradation pathways count", y = "Density") + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.2) )
+meanpathw.degboot
+#ggsave("degradationnpathwayscount_bootstrap.pdf",plot= meanpathw.degboot, width = 5, height = 4)
+
+pathwbootstrap2 <-cowplot::plot_grid(meanpathwboot, meanpathw.degboot, ncol= 2, labels =c("A", "B"), label_size = 24,
+                            label_x = c(0.0,0.0))
+#ggsave("twopathwayscount_bootstrap.pdf",plot= pathwbootstrap2, width = 10, height = 4)
+
+### all metabolic network elements in one picture
+
+
+```
+
+The bootstrap of all metabolic models shows that rhythmic bacteria don't
+have more pathways than expected by chance (also separated by
+biosynthesis and degradation)
+
+```{r all proteins and all hypothetical proteins count}
+## we create the protein matrix using bash code similar to the pathways_matrix using the proteins.dat files of m2m metabolic models
+#proteins
+#####
+allprot <- read_csv("metmodels_all/protein_matrix.csv")
+row_sumprot <- as.data.frame(rowSums(allprot[, 2:ncol(allprot)]))
+
+## how many proteins has each bacteria
+protsum <- as.data.frame(colSums(allprot[2:ncol(allprot)])) %>% dplyr::rename(total_prot = "colSums(allprot[2:ncol(allprot)])")
+
+protsum <-  tibble::rownames_to_column(protsum, "taxa")
+
+change <- tibble(oldname = c("Abiotrophia_sp", "Desulfovibrio_sp", "Eubacterium_sp", "Ruminococcus_gnavus_ATCC_29149", "Paraprevotella_xylaniphila_82A6"),
+                  newname = c("Abiotrophia_sp_HMSC24B09", "Desulfovibrio_sp_An276","Eubacterium_sp_An11","Ruminococcus_gnavus", "Paraprevotella_xylaniphila"))
+protsum <- protsum %>% mutate( taxa = case_when( taxa %in% change$oldname ~ change$newname[match(taxa, change$oldname)],
+      TRUE ~ taxa)) %>% arrange(taxa)
+
+allprotsum <- full_join(allgsize.plusrhyt3.2, protsum, by = "taxa")
+
+## delete the two bacteria with suppressed genome
+
+allprotsum  <- allprotsum  %>%  filter(taxa != "Firmicutes_bacterium_CAG_83" & taxa != "Agathobaculum_butyriciproducens")
+
+plotprotvsgenome <-ggplot(allprotsum, aes(x =genome_size_bp/1000000, y = total_prot, alpha = I(0.6), color = Rhythmicity)) +  geom_point(size= 2, show.legend= F)  + 
+  scale_color_manual(values= color_mapping)+
+  labs(x = "Genome size (Mb)", y ="Total number proteins" ) +
+  theme(axis.text.x = element_text(size = 18), axis.text.y = element_text(hjust = 1, size= 18,), axis.title.x = element_text(size = 20), axis.title.y = element_text(size = 20), panel.background = element_rect(fill = "white", colour = "black", linewidth =1.5), panel.grid.major.x = element_blank(), legend.text = element_blank(), legend.title = element_blank())
+
+plotprotvsgenome
+
+set.seed(7891)
+rhythmic_bacteria_size <- subset(allprotsum, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+num_permutations <- 10000 
+
+# Create vectors to store permutation results
+permuted_protmeans <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- allprotsum[!is.na(allprotsum$total_prot), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_protmeans[i] <- mean(random_sample$total_prot)
+}
+
+observed_protmean <- mean(rhythmic_bacteria_size$total_prot, na.rm=T)
+
+# Calculate p-values
+p_value_mean_prot <- mean(permuted_protmeans >= observed_protmean)
+
+# Print the results
+cat("Observed Mean protein count", observed_protmean , "\n")
+cat("P-value (Mean protein count):", p_value_mean_prot, "\n")
+
+perm_prot <- as.data.frame(permuted_protmeans)
+
+protcountplot <- ggplot() + geom_density(aes(perm_prot$permuted_protmeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_protmean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value = ", p_value_mean_prot, sep = ""), 
+         x = "Mean proteins count", y = "Density") + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.2) )
+#ggsave("proteincount_bootstrap.pdf",plot= protcountplot, width = 5, height = 4)
+protcountplot
+
+## hypothetical proteins
+# we searched and count using bash code for unknown proteins in the protein_lists files in the gbff folders for each bacteria using "hypothetical_prot" "uncharacterized_prot" 
+#####
+
+hypot <- read_csv("unknown_proteins_count.csv") %>% select (species_name, hypothetical_prot) %>% dplyr::rename (taxa = "species_name")
+
+hypot2 <- hypot %>% mutate( taxa = case_when( taxa %in% change$oldname ~ change$newname[match(taxa, change$oldname)],
+      TRUE ~ taxa)) %>% arrange(taxa)
+
+hypot2  <- hypot2  %>%  filter(taxa != "Firmicutes_bacterium_CAG_83" & taxa != "Agathobaculum_butyriciproducens")
+
+
+hypotrhythm <- full_join(allprotsum, hypot2, by = "taxa")
+
+## delete the two bacteria with suppressed genome
+
+hypotrh  <- hypotrhythm  %>%  filter(taxa != "Firmicutes_bacterium_CAG_83" & taxa != "Agathobaculum_butyriciproducens") %>% select(Phylum, Family, taxa, Rhythmicity, genome_size_bp, genes, regulators, hypothetical_prot, everything())
+
+
+set.seed(7891)
+rhythmic_bacteria_size <- subset(hypotrh, Rhythmicity== "rhythmic")
+num_rhythmic_bacteria <- nrow(rhythmic_bacteria_size)
+num_permutations <- 10000 
+
+# Create vectors to store permutation results
+permuted_hypmeans <- numeric(num_permutations)
+
+# Perform permutations
+for (i in 1:num_permutations) {
+  # Randomly sample 8 bacteria from the dataframe
+  random_sample <- hypotrh[!is.na(hypotrh$hypothetical_prot), ]
+  random_sample <- random_sample[sample(nrow(random_sample), num_rhythmic_bacteria), ]
+  
+  # Calculate mean and percentage of prevalence for the random sample
+  permuted_hypmeans[i] <- mean(random_sample$hypothetical_prot)
+}
+
+observed_hypmean <- mean(rhythmic_bacteria_size$hypothetical_prot, na.rm=T)
+
+# Calculate p-values
+p_value_mean_hyp <- mean(permuted_hypmeans >= observed_hypmean)
+
+# Print the results
+cat("Observed Mean hypothetical protein count", observed_hypmean , "\n")
+cat("P-value (Mean hypothetical protein count):", p_value_mean_hyp, "\n")
+
+perm_hyp <- as.data.frame(permuted_hypmeans)
+
+prothypplot <- ggplot() + geom_density(aes(perm_hyp$permuted_hypmeans, ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = observed_hypmean), linetype = "dashed", color = "red") +
+  labs(title = paste0("p-value < 0.05" , sep = ""), 
+         x = "Mean hypothetical proteins count", y = "Density") + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none", 
+      plot.title = element_text(size= 18, hjust = 0.2) )
+ggsave("hypprotcount_bootstrap.pdf",plot= prothypplot, width = 5, height = 4)
+prothypplot
+
+metnetanal <- cowplot::plot_grid(plotgenevsnetw, plotnetsvsgenome, bootplotall, meanpathwboot, meanpathw.degboot, protcountplot, prothypplot, ncol= 2, nrow= 4,                           labels =c("A", "B", "C", "D", "E", "F", "G"), label_size = 26,
+                                    label_x = c(0.92,0.92, 0.92,0.92,0.92, 0.92, 0.92),
+                                    label_y = c(0.99,0.99,0.91, 0.91,0.91, 0.91, 0.91))
+
+#ggsave("allmetnet_plots.pdf",plot= metnetanal, width = 12, height = 15)
+metnetanal
+```
+Observed Mean protein count 1776.5 
+P-value (Mean protein count): 0.3144 (probability of the permuted value to be higher than the mean number of proteins of rhythmic bacteria)
+
+The genome size is bigger, the gene count is higher than the expected by chance, BUT the proteins in the models aren't significantly different than what could be expected by chance
+
+
+```{r preparation of metabolic data to dissimilarity and significant differences bootstrap}
+## preparation of the dataframe
+metabolicpathmatrix.all <- read_csv("pathway_matrix.csv")
+
+clusteredpathways <- read_csv("doubletypesUnique_Combinations_all.csv")
+## adding classes of pathways (types1 and 2)
+metpathwithclust.all <- left_join(metabolicpathmatrix.all, clusteredpathways) %>% select(TYPES2, TYPES1, COMMON_NAME, everything())
+
+row_sumsclust <- (rowSums(metpathwithclust.all[, 4:ncol(metpathwithclust.all)])) 
+rows_to_remove <- which(row_sumsclust == 0)
+metpathwithclust.all<- metpathwithclust.all[-rows_to_remove, ]
+
+#write_csv(metpathwithclust.all, "metabolic_matrix_all_withtypes2.csv")
+metpathwithclust.all <- read_csv ("metabolic_matrix_all_withtypes2.csv")
+
+#rhythmic bacteria
+metpathcom.types <-read_csv("Metabolic_matrix_withTypes2.csv")
+
+metpath.matrix <- merge(metpathwithclust.all, metpathcom.types)
+## one bacteria is repeated with the specific strain, we delete it because it come from the same genome
+
+metpath.matrix <- metpath.matrix %>% select (-"Paraprevotella_xylaniphila_82A6")
+
+#write_csv(metpath.matrix, "met_matrix_all_bact_withTypes.csv")
+
+## selecte types 1 categories. 
+metpath.matrix.types <- metpath.matrix %>% select(-COMMON_NAME, -TYPES2) %>%  dplyr::group_by(TYPES1) %>%  dplyr::summarize(across(everything(), sum)) # 313 group of pathways
+
+t.metpathtypes.matrix <- as.data.frame(t(metpath.matrix.types[-1]))
+colnames(t.metpathtypes.matrix) <- metpath.matrix.types$TYPES1
+t.metpathtypes.matrix <-rownames_to_column(t.metpathtypes.matrix, var = "species_name")
+
+## Then we change the names to add the categories (rhythmic etc)
+
+changes.m <- tibble(oldname = c("Ruminococcus_gnavus_ATCC_29149", "Desulfovibrio_sp", "Eubacterium_sp", "Abiotrophia_sp"),
+                  newname = c("Ruminococcus_gnavus",  "Desulfovibrio_sp_An276", "Eubacterium_sp_An11", "Abiotrophia_sp_HMSC24B09"))
+t.metpathtypes.matrix <- t.metpathtypes.matrix %>% mutate( species_name = case_when(species_name %in% changes.m$oldname ~ changes.m$newname[match(species_name, changes.m$oldname)], TRUE ~ species_name)) %>% arrange(species_name)
+
+listrhytwithtaxa2 <-  read_csv("Doubling_selected_bacteriaplusrand_with_tax.csv") %>% select(taxa, Rhythmicity) %>% dplyr::rename(species_name= "taxa")
+
+
+t.metpathtypes.matrixclas <- full_join(t.metpathtypes.matrix, listrhytwithtaxa2) %>% select(species_name, Rhythmicity, everything())
+t.metpathtypes.matrixclas[is.na(t.metpathtypes.matrixclas)] = "no-data"
+
+## filter the two bacteria with supressed genomes
+
+t.metpathtypes.matrixclas <- t.metpathtypes.matrixclas %>%  filter(species_name != "Firmicutes_bacterium_CAG_83" & species_name != "Agathobaculum_butyriciproducens")
+
+
+```
+
+```{r dissimilarity bootstrap}
+
+t.metpathtypes.matrixclas2 <- t.metpathtypes.matrixclas
+t.metpathtypes.matrixclas2$Rhythmicity <- ifelse(t.metpathtypes.matrixclas2$Rhythmicity != "rhythmic", "non-rhythmic", t.metpathtypes.matrixclas2$Rhythmicity)
+t.metpathtypes.matrixclas2$Rhythmicity <- factor(t.metpathtypes.matrixclas2$Rhythmicity, levels = c("rhythmic", "non-rhythmic"))
+
+permadonesfx <- function(data){
+  # Calculate Bray-Curtis dissimilarity matrix
+  dist_matrix <- tryCatch({
+    vegdist(data[, -(1:2)], method = "bray")
+  }, error = function(e) {
+    print("Error calculating Bray-Curtis dissimilarity matrix")
+    print(e)
+    return(NULL)
+  })
+  
+  if(is.null(dist_matrix)) {
+    return(NULL)
+  }
+  
+  # Perform PERMANOVA analysis
+  perm_result <- tryCatch({
+    adonis2(dist_matrix ~ Rhythmicity, data = data, permutations = 999)
+  }, error = function(e) {
+    print("Error performing PERMANOVA analysis")
+    print(e)
+    return(NULL)
+  })
+  
+  if(is.null(perm_result)) {
+    return(NULL)
+  }
+  
+  return(perm_result$"Pr(>F)"[1])
+}
+set.seed(7891)
+# Extract rhythmic and non-rhythmic bacteria
+rhythmic_data <- t.metpathtypes.matrixclas2[t.metpathtypes.matrixclas2$Rhythmicity == "rhythmic", ]
+non_rhythmic_data <- t.metpathtypes.matrixclas2[t.metpathtypes.matrixclas2$Rhythmicity != "rhythmic", ]
+
+# Number of permutations
+num_permutations <- 10000
+permuted_pvalues <- numeric(num_permutations)
+set.seed(1987)
+# Perform permutations to calculate p-values
+for (i in 1:num_permutations) {
+  # Randomly sample 8 non-rhythmic bacteria 
+  permuted_non_rhythmic_data <- t.metpathtypes.matrixclas2[sample(nrow(t.metpathtypes.matrixclas2), 8), ]
+  
+  # Combine with the rhythmic data
+  permuted_data <- rbind(rhythmic_data, permuted_non_rhythmic_data)
+  
+  # Perform PERMANOVA analysis and store p-value
+  permuted_pvalues[i] <- permadonesfx(permuted_data)
+}
+
+perm_permanovapvalues <- as.data.frame(permuted_pvalues)
+# Calculate the proportion of p-values lower or equal to 0.05
+
+threshold <- 0.05
+proportion_significant <- mean(permuted_pvalues <= threshold)
+#0.462
+
+## now we check the degradation pathways
+
+deg.cols <- grep("deg", colnames(t.metpathtypes.matrixclas2), ignore.case = TRUE)
+degfinalcols <- c(1:2, deg.cols)
+
+deg.metpathtypes <- t.metpathtypes.matrixclas2[,degfinalcols]
+
+## bootstrap flow
+# Extract rhythmic and non-rhythmic bacteria
+rhythmic_datadeg <- deg.metpathtypes[deg.metpathtypes$Rhythmicity == "rhythmic", ]
+non_rhythmic_datadeg <- deg.metpathtypes[deg.metpathtypes$Rhythmicity != "rhythmic", ]
+
+# Number of permutations
+num_permutations <- 1000
+permuted_pvaluesdeg <- numeric(num_permutations)
+set.seed(1987)
+# Perform permutations and calculate p-values
+for (i in 1:num_permutations) {
+  # Randomly sample 8 non-rhythmic bacteria
+  permuted_non_rhythmic_data <- non_rhythmic_data[sample(nrow(non_rhythmic_data), 8), ]
+  
+  # Combine with the rhythmic data
+  permuted_data <- rbind(rhythmic_data, permuted_non_rhythmic_data)
+  
+  # Perform PERMANOVA analysis and store p-value
+  permuted_pvaluesdeg[i] <- permadonesfx(permuted_data)
+}
+
+perm_permanovapvaluesdeg <- as.data.frame(permuted_pvaluesdeg)
+# Calculate the proportion of p-values lower or equal to 0.05
+
+threshold <- 0.05
+proportion_significantdeg <- mean(permuted_pvaluesdeg <= threshold)
+# 0.448    
+
+## plots
+
+dissplot1 <- ggplot() + geom_density(aes(perm_permanovapvalues$permuted_pvalues , ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = 0.05), linetype = "dashed", color = "red") +
+  labs(title = paste0("Proportion of comparisons significantly different 0.463", sep = ""),
+         x = "Mean count of proteins", y = "Density") + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none",
+      plot.title = element_text(size= 18, hjust = 0.2) )
+#ggsave("dissimilarity.pdf",plot= dissplot1, width = 5, height = 4)
+
+
+dissplot2 <- ggplot() + geom_density(aes(perm_permanovapvaluesdeg$permuted_pvalues , ..scaled..), fill = "grey") +
+  theme_classic() + geom_vline(aes(xintercept = 0.05), linetype = "dashed", color = "red") +
+  labs(title = paste0("Proportion of comparisons significantly different 0.448", sep = ""),
+         x = "Mean count of proteins", y = "Density") + theme(axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 20),
+      panel.background = element_rect(fill = "white", colour = "black", size = 1),
+      axis.text.x = element_text(size = 18),
+       axis.title.x = element_text(size = 18),
+      legend.position="none",
+      plot.title = element_text(size= 18, hjust = 0.2) )
+#ggsave("dissimilaritydeg.pdf",plot= dissplot2, width = 5, height = 4)
+dissplot2
+dissplot1
+
+```
+
+```{r metabolic pathways PCA visualization, fig.height = 12, fig.width= 18}
+
+metabolicpathmatrix <- read_csv("pathway_matrix.csv")
+
+### add types from the reconstruction (there are repetition because that file isn't clean but works)
+typesfromrec <- read_csv("doubletypesUnique_Combinations.csv")
+
+metpathcom.types <- left_join(metabolicpathmatrix, typesfromrec) %>% select ( COMMON_NAME, TYPES1, TYPES2, everything())
+
+t.metpathcommnam <- metpathcom.types %>% select(-TYPES1, -TYPES2)
+t.metpathcommnam <- as.data.frame(t(t.metpathcommnam[-1]))
+colnames(t.metpathcommnam) <- metpathcom.types$COMMON_NAME
+t.metpathcommnam <-rownames_to_column(t.metpathcommnam, var = "species_name")
+
+# some names should be modify
+changes2 <- tibble(oldname = c("Ruminococcus_gnavus_ATCC_29149", "Paraprevotella_xylaniphila_82A6", "Desulfovibrio_sp", "Eubacterium_sp", "Abiotrophia_sp"),
+                  newname = c("Ruminococcus_gnavus", "Paraprevotella_xylaniphila", "Desulfovibrio_sp_An276", "Eubacterium_sp_An11", "Abiotrophia_sp_HMSC24B09"))
+t.metpathcommnam <- t.metpathcommnam %>% mutate(species_name = case_when(species_name %in% changes2$oldname ~ changes2$newname[match(species_name, changes2$oldname)], TRUE ~ species_name)) %>% arrange(species_name)
+## add taxonomic and rhythmicity
+
+listrhytwithtaxa <-  read_csv("Doubling_selected_bacteriaplusrand_with_tax.csv") %>% select(taxa, Genus, Family, Order, Class, Phylum, Rhythmicity) %>% dplyr::rename(species_name = "taxa")
+
+# listrhytwithtaxa <- left_join(taxonomiclevels, listclassrhyt) 
+# listrhytwithtaxa[is.na(listrhytwithtaxa)] = "no"
+# listrhytwithtaxa <- listrhytwithtaxa %>% select(-regulators, -genes, - CDS, -genome_size_bp, -species_name.y)
+#write_csv(listrhytwithtaxa, "Rhythmicity_taxonomic_hundred.csv")
+t.metpath <- left_join(t.metpathcommnam,listrhytwithtaxa, by = "species_name") 
+t.metpath <- t.metpath %>% select(Phylum, Class, Order, Family, Genus, species_name, Rhythmicity, everything())
+
+## There are four pathways present in all the bacteria that are a problem for the rescaling in PCA. Before running is best to 
+# this is the code suggested by chat gpt to exclude the columns
+
+constant_columns <- sapply(t.metpath[, -(1:7)], function(col) length(unique(col)) == 1)
+
+# Remove constant columns
+pca_metpath <- prcomp(t.metpath[, -(1:7)][, !constant_columns], center = TRUE, scale. = TRUE)
+
+# Create the PCA plot
+pcaplot <- autoplot(pca_metpath, data = t.metpath, shape ="Rhythmicity"  , colour = "Phylum", size = 5, loadings = F) +
+  scale_shape_manual(values = c(25, 24, 21, 23,19, 20, 4, 22)) +
+  theme(axis.text.x = element_text(size = 18, face = "bold"),
+    axis.text.y = element_text(size = 18, face = "bold"),
+    axis.title.x = element_text(size = 24, face = "bold"),
+    axis.title.y = element_text(size = 24, face = "bold"),
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+    panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 18),
+    legend.title = element_text(size = 20, face = "bold"),
+    legend.position = c(.90, .22),
+    legend.margin = margin(6, 6, 6, 6),
+    legend.box.background = element_rect( size= 0.5, linetype = "solid", colour = "black"))+  
+  guides( alpha = "none", fill = guide_legend(override.aes = list(shape = 21, size = 5),
+                       breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent")))
+pcaplot1 <-pcaplot + scale_fill_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black"),
+                     breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent"))
+
+pcaplot 
+#ggsave("PCA_commonnames_all.pdf",plot= pcaplot1, width = 18, height = 12)
+
+```
+
+```{r PCA 616 bact}
+
+## created in the other t.metpathtypes.matrixclas
+ 
+t.metall.tax <- left_join(t.metpathtypes.matrixclas, taxonomiclevels) %>% select(-Genus, -Family, -Order, -Class) %>% select(Phylum, species_name, everything())
+#write_csv(t.metall.tax, "metpath_types_all_with_tax.csv")
+
+## missing phylum added
+
+t.metall.tax <- read_csv ("metpath_types_all_with_tax.csv")
+
+t.metall.tax2 <- t.metall.tax %>% filter(Phylum == "Firmicutes" | Phylum == "Bacteroidetes")
+
+t.metall.tax2$Rhythmicity <- ifelse(t.metall.tax2$Rhythmicity != "rhythmic", "non-rhythmic", t.metall.tax2$Rhythmicity)
+
+constant_columns.all <- sapply(t.metall.tax2[, -(1:3)], function(col) length(unique(col)) == 1)
+
+# Remove constant columns
+pca_metpathall <- prcomp(t.metall.tax2[, -(1:3)][, !constant_columns.all], center = TRUE, scale. = TRUE)
+
+t.metall.tax2$Phylum <- as.factor(t.metall.tax2$Phylum)
+pcaplot2.all <- autoplot(pca_metpathall, data = t.metall.tax2, shape = "Rhythmicity", size= "Rhythmicity",fill= "Phylum", colour ="Phylum", loadings = F, alpha = 0.6)+   scale_shape_manual(values = c(21,22)) + scale_size_manual(values= c(2,5))+
+    stat_ellipse(aes(colour = Phylum), level = 0.9 , linetype = 1, type = "t", inherit.aes = TRUE)    +  theme(axis.text.x = element_text(size = 18, face = "bold"),
+    axis.text.y = element_text(size = 18, face = "bold"),
+    axis.title.x = element_text(size = 20, face = "bold"),
+    axis.title.y = element_text(size = 20, face = "bold"),
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+    panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.box.background = element_rect(size= 0.5, linetype = "solid", colour = "black"))+  
+  guides( alpha = "none",shape ="none", size="none")
+                    
+                    
+pcaplot2.all
+
+#ggsave("PCA_firmicutes_bacteroid.pdf", plot= pcaplot2.all, width = 12, height = 8)
+
+## Look separated firmicutes and bacteroidetes
+
+t.metfirm <- t.metall.tax2 %>% filter(Phylum == "Firmicutes")
+t.metbact <- t.metall.tax2 %>% filter(Phylum == "Bacteroidetes")
+
+constant_columns.firm <- sapply(t.metfirm[, -(1:3)], function(col) length(unique(col)) == 1)
+
+# Remove constant columns
+pca_metpath.f <- prcomp(t.metfirm[, -(1:3)][, !constant_columns.firm], center = TRUE, scale. = TRUE)
+
+pcaplot2.f <- autoplot(pca_metpath.f, data = t.metfirm, shape = "Rhythmicity", size= "Rhythmicity",fill= "Rhythmicity", colour ="Rhythmicity", loadings = F, alpha = 0.6)+   scale_shape_manual(values = c(21,22)) + scale_size_manual(values= c(2,5))+
+    stat_ellipse(aes(colour = Rhythmicity), level = 0.9 , linetype = 1, type = "t", inherit.aes = TRUE)    +  theme(axis.text.x = element_text(size = 18, face = "bold"),
+    axis.text.y = element_text(size = 18, face = "bold"),
+    axis.title.x = element_text(size = 20, face = "bold"),
+    axis.title.y = element_text(size = 20, face = "bold"),
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+    panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.box.background = element_rect(size= 0.5, linetype = "solid", colour = "black"))+  
+  guides( alpha = "none",shape ="none", size="none")
+#############
+constant_columns.bact <- sapply(t.metbact[, -(1:3)], function(col) length(unique(col)) == 1)
+
+# Remove constant columns
+pca_metpath.b <- prcomp(t.metbact[, -(1:3)][, !constant_columns.bact], center = TRUE, scale. = TRUE)
+
+pcaplot2.b <- autoplot(pca_metpath.b, data = t.metbact, shape = "Rhythmicity", size= "Rhythmicity",fill= "Rhythmicity", colour ="Rhythmicity", loadings = F, alpha = 0.6)+   scale_shape_manual(values = c(21,22)) + scale_size_manual(values= c(2,5))+
+    stat_ellipse(aes(colour = Rhythmicity), level = 0.9 , linetype = 1, type = "t", inherit.aes = TRUE)    +  theme(axis.text.x = element_text(size = 18, face = "bold"),
+    axis.text.y = element_text(size = 18, face = "bold"),
+    axis.title.x = element_text(size = 20, face = "bold"),
+    axis.title.y = element_text(size = 20, face = "bold"),
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+    panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.box.background = element_rect(size= 0.5, linetype = "solid", colour = "black"))+  
+  guides( alpha = "none",shape ="none", size="none")
+
+
+pcaplot2.f
+pcaplot2.b
+
+```
+
+```{r evaluating the principal components }
+
+PCAvalues2 <- function(pca_metpath, t.metp){
+  pc2_values <- pca_metpath$x[, 1]
+
+# Create a data frame with species names, rhythmicity, and PC2 values
+data_for_analysis <- data.frame(species_name = t.metp$species_name,  rhythmicity = t.metp$Rhythmicity,  pc2_values = pc2_values)
+
+# Filter data for rhythmic and non-rhythmic bacteria
+rhythmic_data <- data_for_analysis[data_for_analysis$rhythmicity == "rhythmic", ]
+non_rhythmic_data <- data_for_analysis[data_for_analysis$rhythmicity == "non-rhythmic", ]
+
+# Perform t-test (assuming equal variances)
+t_test_result <- t.test(rhythmic_data$pc2_values, non_rhythmic_data$pc2_values)
+
+# Print the results
+cat("Rhythmic vs non-rhythmic T-test p-value:", t_test_result$p.value, "\n")
+}
+
+## 
+PCAvalues2(pca_metpath.b, t.metbact) 
+PCAvalues2(pca_metpath.f, t.metfirm)
+
+### Function to compare using bootstrap 
+
+PCAvalues_bootstrap <- function(data, n_iterations = 1000) {
+  
+  constant_columns <- sapply(data[, -(1:3)], function(col) length(unique(col)) == 1)
+
+  # Center and scale the data
+  scaled_data <- scale(data[, -(1:3)][, !constant_columns])
+  
+  # Perform PCA
+  pca_result <- prcomp(scaled_data, center = TRUE, scale. = TRUE)
+  
+  # Get PC1 values
+  pc1_values <- pca_result$x[, 2]
+  
+  # Create a data frame with PC1 values and rhythmicity
+  data_for_analysis <- data.frame(pc1_values, rhythmicity = data$Rhythmicity)
+  
+  # Filter data for rhythmic and non-rhythmic bacteria
+  rhythmic_data <- data_for_analysis[data_for_analysis$rhythmicity == "rhythmic", ]
+  non_rhythmic_data <- data_for_analysis[data_for_analysis$rhythmicity == "non-rhythmic", ]
+  
+  # Function to calculate p-value of t-test for two independent samples
+  calculate_ttest_pvalue <- function(data1, data2) {
+    t_test_result <- t.test(data1, data2)
+    t_test_result$p.value
+  }
+  
+  # Vector to store results
+  boot_results <- numeric(n_iterations)
+  
+  # Perform bootstrap
+  for (i in 1:n_iterations) {
+    # Sample PC1 values for rhythmic and non-rhythmic groups
+    sampled_rhythmic <- sample(rhythmic_data$pc1_values, size = 4, replace = FALSE)
+    sampled_non_rhythmic <- sample(non_rhythmic_data$pc1_values, size = 4, replace = FALSE)
+    
+    # Perform t-test
+    boot_results[i] <- calculate_ttest_pvalue(sampled_rhythmic, sampled_non_rhythmic)
+  }
+  
+  # Calculate proportion of times rhythmic bacteria have significantly different PC1 values
+  proportion_significant <- sum(boot_results < 0.05) / n_iterations
+  
+  # Print the results
+  cat("Proportion of times rhythmic bacteria have significantly different PC1 values:", proportion_significant, "\n")
+}
+
+# Call the function with original data for bacteroidetes
+sigpca1bact <- PCAvalues_bootstrap(t.metbact, n_iterations = 10000)
+signpca1firm<- PCAvalues_bootstrap(t.metfirm, n_iterations = 10000)
+
+# Call the function for bacteroidetes data
+sigpca1bact <- PCAvalues_bootstrap(pca_metpath.b, t.metbact, n_iterations = 10000)
+
+summary(pca_metpath.b)
+```
+PC1 comparison four rhythmic vs all other:
+Bacteroidetes Rhythmic vs non-rhythmic T-test p-value: 0.0008858318 
+Firmicutes Rhythmic vs non-rhythmic T-test p-value: 0.001243675 
+
+
+```{r metabolic pathways PCA reduced categories, fig.height = 10, fig.width= 14}
+
+metabolicpathmatrix <- read_csv("pathway_matrix.csv")
+#First exclude the rows suming 0
+row_sums <- rowSums(metabolicpathmatrix[, 2:ncol(metabolicpathmatrix)])
+rows_to_remove <- which(row_sums == 0)
+
+metabolicpathmatrix <- metabolicpathmatrix[-rows_to_remove, ]
+
+### add types from the reconstruction (there are repetition because that file isn't clean but works)
+typesfromrec <-read_csv("/doubletypesUnique_Combinations_selected.csv")
+
+metpathcom.types <- left_join(metabolicpathmatrix, typesfromrec) %>% select ( COMMON_NAME, TYPES1, TYPES2, everything())
+
+metpathtypes <- metpathcom.types %>% select(-COMMON_NAME, -TYPES2)
+metpathtypes2 <- metpathtypes %>%  dplyr::group_by(TYPES1) %>%  dplyr::summarize(across(everything(), sum))
+
+t.metpathtypes2 <- as.data.frame(t(metpathtypes2[-1]))
+colnames(t.metpathtypes2) <- metpathtypes2$TYPES1
+t.metpathtypes2 <-rownames_to_column(t.metpathtypes2, var = "species_name")
+## some bacteria has names that need to be modified
+changes2 <- tibble(oldname = c("Ruminococcus_gnavus_ATCC_29149", "Paraprevotella_xylaniphila_82A6", "Desulfovibrio_sp", "Eubacterium_sp", "Abiotrophia_sp"),
+                  newname = c("Ruminococcus_gnavus", "Paraprevotella_xylaniphila", "Desulfovibrio_sp_An276", "Eubacterium_sp_An11", "Abiotrophia_sp_HMSC24B09"))
+t.metpathtypes2 <- t.metpathtypes2 %>% mutate( species_name = case_when(species_name %in% changes2$oldname ~ changes2$newname[match(species_name, changes2$oldname)], TRUE ~ species_name)) %>% arrange(species_name)
+
+## add taxonomy and rhythmicity
+listrhytwithtaxa <-  read_csv("Doubling_selected_bacteriaplusrand_with_tax.csv") %>% select(taxa, Genus, Family, Order, Class, Phylum, Rhythmicity) %>% dplyr::rename(species_name= "taxa")
+
+t.metpath3 <- left_join(t.metpathtypes2,listrhytwithtaxa, by = "species_name") 
+t.metpath3 <- t.metpath3 %>% select(Phylum, Class, Order, Family, Genus, species_name, Rhythmicity, everything())
+
+## we check if there are paths present in the same way in all the bacteria that. Those are a problem for the rescaling in PCA. 
+# this is the code suggested by chat gpt to exclude the columns
+
+constant_columns3 <- sapply(t.metpath3[, -(1:7)], function(col) length(unique(col)) == 1)
+
+# Remove constant columns
+pca_metpathshort <- prcomp(t.metpath3[, -(1:7)][, !constant_columns3], center = TRUE, scale. = TRUE)
+
+#### outlier again are proteobacteria so we use the new list
+######
+metpathcom.types.sp <- left_join(metabolicpathmatrix.sp, typesfromrec) %>% select ( COMMON_NAME, TYPES1, TYPES2, everything())
+row_sums.wp <- as.data.frame(rowSums(metpathcom.types.sp[, 4:ncol(metpathcom.types.sp)])) ## all pathways are present
+
+# save to complete the missing types1
+#write_csv(metpathcom.types.sp, "metabolicmatrix_withTypes_replacedprote.csv")
+
+metpathtypes.sp <- metpathcom.types.sp %>% select(-COMMON_NAME, -TYPES2)
+metpathtypes2.sp <- metpathtypes.sp %>%  dplyr::group_by(TYPES1) %>%  dplyr::summarize(across(everything(), sum))
+
+t.metpathtypes2.sp <- as.data.frame(t(metpathtypes2.sp[-1]))
+colnames(t.metpathtypes2.sp) <- metpathtypes2.sp$TYPES1
+t.metpathtypes2.sp <-rownames_to_column(t.metpathtypes2.sp, var = "species_name")
+
+## Modified names
+changes2 <- tibble(oldname = c("Ruminococcus_gnavus_ATCC_29149", "Paraprevotella_xylaniphila_82A6", "Desulfovibrio_sp", "Eubacterium_sp", "Abiotrophia_sp"),
+                  newname = c("Ruminococcus_gnavus", "Paraprevotella_xylaniphila", "Desulfovibrio_sp_An276", "Eubacterium_sp_An11", "Abiotrophia_sp_HMSC24B09"))
+t.metpathtypes2.sp <- t.metpathtypes2.sp %>% mutate( species_name = case_when(species_name %in% changes2$oldname ~ changes2$newname[match(species_name, changes2$oldname)], TRUE ~ species_name)) %>% arrange(species_name)
+
+t.metpath3.sp <- left_join(t.metpathtypes2.sp, listrhytwithtaxarep, by = "species_name") 
+t.metpath3.sp <- t.metpath3.sp %>% select(Phylum, Class, Order, Family, Genus, species_name, Rhythmicity, everything())
+
+constant_columns3.sp <- sapply(t.metpath3.sp[, -(1:7)], function(col) length(unique(col)) == 1)
+
+pca_metpathshort2 <- prcomp(t.metpath3.sp[, -(1:7)][, !constant_columns3.sp], center = TRUE, scale. = TRUE)
+
+plotpcas <- function(pca, datmet){
+  datmet$Phylum <- as.factor(datmet$Phylum)
+  pcaplot2 <- autoplot(pca, data = datmet, shape = "Phylum", fill= "Rhythmicity", colour ="Rhythmicity",size= 5, loadings = F)+   scale_shape_manual(values = c(25, 24, 22, 23,13, 21)) + 
+    stat_ellipse(aes(colour = Phylum), level = 0.9 , linetype = 1, type = "t", inherit.aes = TRUE)  +
+  scale_fill_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black"))+ 
+   scale_color_manual(values = c("rhythmic" = "Blue", "once-rhythmic" = "Sky Blue", "non-rhythmic" = "Orange", "next-prev" = "Purple", "next-ab" = "Brown", "random" = "Pink", "lessabundant" = "chartreuse1", "lessprevalent" = "black")) +  theme(axis.text.x = element_text(size = 18, face = "bold"),
+    axis.text.y = element_text(size = 18, face = "bold"),
+    axis.title.x = element_text(size = 20, face = "bold"),
+    axis.title.y = element_text(size = 20, face = "bold"),
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+    panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 18),
+    legend.title = element_text(size = 18, face = "bold"),
+    legend.position = c(.91, .79),
+    legend.margin = margin(6, 6, 6, 6),
+    legend.box.background = element_rect(size= 0.5, linetype = "solid", colour = "black"))+  
+  guides( alpha = "none",  color = "none",
+    fill = guide_legend(override.aes = list(shape = 21, size = 4),
+                       breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent")))
+
+pcaplot2 + scale_fill_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black"),
+                     breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent"))
+}
+
+plotpca1 <- plotpcas(pca_metpathshort, t.metpath3)
+plotpca2 <- plotpcas(pca_metpathshort2, t.metpath3.sp)
+
+# ggsave("PCA_groupedpaths_firstbact.pdf",plot= plotpca1, width = 18, height = 12)
+# ggsave("PCA_groupedpaths_replacedprottbact.pdf",plot= plotpca2, width = 18, height = 12)
+plotpca1
+```
+
+```{r PCA analysis of pathways degradation, fig.height = 12, fig.width= 16}
+## degradation pathways
+degradationpathways <- grep("deg|assim", colnames(t.metpath3), ignore.case = TRUE)
+# Extract the first 8 columns and columns related to degradation
+degradation_columns <- c(1:7, degradationpathways)
+# Subset the data frame based on selected columns
+degradation.metpath <- t.metpath3[, degradation_columns]
+constant_columnsdeg <- sapply(degradation.metpath[, -(1:7)], function(col) length(unique(col)) == 1)
+# PCA 
+pca_metpath.deg <- prcomp(degradation.metpath[, -(1:7)][, !constant_columnsdeg], center = TRUE, scale. = TRUE)
+
+pca_metpath.biosyn <- prcomp(biosyn.metpath[, -(1:7)][, !constant_columnsbios0], center = TRUE, scale. = TRUE)
+
+## Metpaths replaced proteobacteria
+## degradation pathways replaced
+degradationpathways.sp <- grep("deg|assim", colnames(t.metpath3.sp), ignore.case = TRUE)
+# Extract the first 8 columns and columns related to degradation
+degradation_columns.sp <- c(1:7, degradationpathways.sp)
+# Subset the data frame based on selected columns
+degradation.metpath.sp <- t.metpath3.sp[, degradation_columns.sp]
+constant_columnsdeg.sp <- sapply(degradation.metpath.sp[, -(1:7)], function(col) length(unique(col)) == 1)
+# PCA 
+pca_metpath.deg.sp <- prcomp(degradation.metpath.sp[, -(1:7)][, !constant_columnsdeg.sp], center = TRUE, scale. = TRUE)
+
+
+plotdegpcafx <- function(data){
+  constant_columnsdeg <- sapply(data[, -(1:7)], function(col) length(unique(col)) == 1)
+
+pca_metpath.deg <- prcomp(data[, -(1:7)][, !constant_columnsdeg], center = TRUE, scale. = TRUE)
+
+pcaplot.deg <- autoplot(pca_metpath.deg, data = data, shape = "Phylum", colour= "Rhythmicity" , fill= "Rhythmicity", size= 5, loadings = F)+   scale_shape_manual(values = c(25, 24, 22, 23, 13, 21)) +
+   scale_fill_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black")) +  scale_color_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black")) +  scale_color_manual(values = c("rhythmic" = "Blue", "once-rhythmic" = "Sky Blue", "non-rhythmic" = "Orange", "next-prev" = "Purple", "next-ab" = "Brown", "random" = "Pink")) +  theme(axis.text.x = element_text(size = 18, face = "bold"),
+    axis.text.y = element_text(size = 18, face = "bold"),
+    axis.title.x = element_text(size = 20, face = "bold"),
+    axis.title.y = element_text(size = 20, face = "bold"),
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+    panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.margin = margin(6, 6, 6, 6),
+    legend.box.background = element_rect(size= 0.5, linetype = "solid", colour = "black"))+  
+  guides( alpha = "none",  color = "none",
+    fill = guide_legend(override.aes = list(shape = 21, size = 4),
+                       breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent")))
+pcaplot.deg +scale_fill_manual(values = c("Red", "cadetblue3", "Orange", "blueviolet", "Brown", "Pink", "chartreuse1", "black"),
+                     breaks = c("rhythmic", "once-rhythmic", "non-rhythmic", "next-prev", "next-ab", "random", "lessabundant", "lessprevalent"),
+                     labels = c("Rhythmic", "Once rhythmic", "Non-rhythmic", "Similar in prevalence", "Similar in abundance", "Random selected", "Less abundant", "Less prevalent"))
+}
+
+plotdegpcafx(degradation.metpath)
+
+plotdegpcafx(degradation.metpath.sp) 
+
+```
+
+t.metpath (vias amplias y todas las bact) t.metpath2 (sin
+proteobacteria) biosyn.metpath (biosintesis) biosyn.metpath2(biosíntesis
+sin proteobacteria) degradation.metpath y degradation.metpath2
+pca_metpathshort  t.metpath3 son las reducidas con los outliers
+pca_metpathshort2 , t.metpath4 reducidas sin proteobacteria
+
+pca_metpath2 pca with replaced proteobacteria pca_metpathshort2 pca with
+replaced proteobacteria with general pathways
+
+(degradation.metpath.sp) separated pathways replaced proteobacteria
+(biosyn.metpath.sp) The filtered three bacteria outlier in the
+degradation group
+
+```{r contribution of metabolic pathways to PC}
+### then we can extract the contribution of each metabolic pathway
+pcam2 <- PCA(t.metpath[, -(1:7)][, !constant_columns])
+var <- get_pca_var(pcam2)
+var1 <- get_pca_var(pca_metpath)
+
+pathway_ids <- colnames(t.metpath[, -(1:7)][, !constant_columns])
+contributions <- as.data.frame(var[["contrib"]]) %>% arrange(Dim.1)
+contribconpca_with_ids <- cbind(PathwayID = pathway_ids, contributions)
+
+# metabolic pathways without proteobacteria
+pcam2.2 <- PCA(t.metpath2[, -(1:7)][, !constant_columns])
+var.2 <- get_pca_var(pcam2.2)
+var1.2 <- get_pca_var(pca_metpath2)
+
+pathway_ids2 <- colnames(t.metpath2[, -(1:7)][, !constant_columns])
+contributions2 <- as.data.frame(var.2[["contrib"]]) %>% arrange(Dim.2)
+contribconpca_with_ids2 <- cbind(PathwayID = pathway_ids2, contributions2)
+
+# version with broader categories
+pcam3 <- PCA(t.metpath3[, -(1:7)][, !constant_columns3])
+var3 <- get_pca_var(pcam3)
+var3.1 <- get_pca_var(pca_metpathshort2)
+
+pathway_ids4 <- colnames(t.metpath3[, -(1:7)][, !constant_columns3])
+contributions4 <- as.data.frame(var3[["contrib"]]) %>% arrange(Dim.1)
+contribconpca_with_ids4 <- cbind(PathwayID = pathway_ids4, contributions4)
+
+## contribution to pc2 to degradation and biosynthesis
+constant_columnsdeg <- sapply(degradation.metpath2[, -(1:7)], function(col) length(unique(col)) == 1)
+pca_metpath.deg <- prcomp(degradation.metpath2[, -(1:7)][, !constant_columnsdeg], center = TRUE, scale. = TRUE)
+
+pcam4 <- PCA(degradation.metpath2[, -(1:7)][, !constant_columnsdeg])
+var4 <- get_pca_var(pcam4)
+var4.1 <- get_pca_var(pca_metpath.deg)
+
+pathway_ids5 <- colnames(degradation.metpath2[, -(1:7)][, !constant_columnsdeg])
+contributions5 <- as.data.frame(var4[["contrib"]]) %>% arrange(Dim.1)
+contribconpca_with_ids5 <- cbind(PathwayID = pathway_ids5, contributions5)
+## biosynthesis
+constant_columnsbio <- sapply(biosyn.metpath2[, -(1:7)], function(col) length(unique(col)) == 1)
+pca_metpath.bios <- prcomp(biosyn.metpath2[, -(1:7)][, !constant_columnsbio], center = TRUE, scale. = TRUE)
+
+pcam5 <- PCA(biosyn.metpath2[, -(1:7)][, !constant_columnsbio])
+var5 <- get_pca_var(pcam5)
+var5.1 <- get_pca_var(pca_metpath.bios)
+
+pathway_ids6 <- colnames(biosyn.metpath2[, -(1:7)][, !constant_columnsbio])
+contributions6 <- as.data.frame(var5[["contrib"]]) %>% arrange(Dim.1)
+contribconpca_with_ids6 <- cbind(PathwayID = pathway_ids6, contributions6)
+
+### contribution of pathways in replaced proteobacteria
+# paths with common names
+pcam.sp <- PCA(t.metpath.sp[, -(1:7)][, !constant_columnssp])
+var.sp <- get_pca_var(pcam.sp)
+
+pathway_ids.sp <- colnames(t.metpath.sp[, -(1:7)][, !constant_columnssp])
+contributions.sp <- as.data.frame(var.sp[["contrib"]]) %>% arrange(Dim.1)
+contribconpca_with_ids.sp <- cbind(PathwayID = pathway_ids.sp, contributions.sp)
+# paths with broader categories
+pcam3.sp <- PCA(t.metpath3.sp[, -(1:7)][, !constant_columns3.sp])
+var3.sp <- get_pca_var(pcam3.sp)
+
+pathway_ids.sp3 <- colnames(t.metpath3.sp[, -(1:7)][, !constant_columns3.sp])
+contributions.sp3 <- as.data.frame(var3.sp[["contrib"]]) %>% arrange(Dim.1)
+contribconpca_with_ids.sp3 <- cbind(PathwayID = pathway_ids.sp3, contributions.sp3)
+
+```
+
+
+```{r evaluating the principal components }
+
+PCAvalues <- function(pca_metpath, t.metp){
+  pc2_values <- pca_metpath$x[, 2]
+
+# Create a data frame with species names, rhythmicity, and PC2 values
+data_for_analysis <- data.frame(species_name = t.metp$species_name,  rhythmicity = t.metp$Rhythmicity,  pc2_values = pc2_values)
+
+# Filter data for rhythmic and non-rhythmic bacteria
+rhythmic_data <- data_for_analysis[data_for_analysis$rhythmicity == "rhythmic", ]
+non_rhythmic_data <- data_for_analysis[data_for_analysis$rhythmicity == "non-rhythmic", ]
+random_data <- data_for_analysis[data_for_analysis$rhythmicity == "random", ]
+once_data <- data_for_analysis[data_for_analysis$rhythmicity == "once-rhythmic", ]
+prev_data <- data_for_analysis[data_for_analysis$rhythmicity == "next-prev", ]
+abund_data <- data_for_analysis[data_for_analysis$rhythmicity == "next-ab", ]
+lessprev_data <- data_for_analysis[data_for_analysis$rhythmicity == "lessprevalent", ]
+lessabund_data <- data_for_analysis[data_for_analysis$rhythmicity == "lessabundant", ]
+
+# Perform t-test (assuming equal variances)
+t_test_result <- t.test(rhythmic_data$pc2_values, non_rhythmic_data$pc2_values)
+t_test_result2 <- t.test(rhythmic_data$pc2_values, random_data$pc2_values)
+t_test_result3 <- t.test(rhythmic_data$pc2_values, once_data$pc2_values)
+t_test_result4 <- t.test(rhythmic_data$pc2_values, prev_data$pc2_values)
+t_test_result5 <- t.test(rhythmic_data$pc2_values, abund_data$pc2_values)
+t_test_result6 <- t.test(rhythmic_data$pc2_values, lessprev_data$pc2_values)
+t_test_result7 <- t.test(rhythmic_data$pc2_values, lessabund_data$pc2_values)
+
+# Print the results
+cat("Rhythmic vs non-rhythmic T-test p-value:", t_test_result$p.value, "\n")
+cat("Rhythmic vs Random T-test p-value:", t_test_result2$p.value, "\n")
+cat("Rhythmic vs Once-Rhythmic T-test p-value:", t_test_result3$p.value, "\n")
+cat("Rhythmic vs next to prevalence T-test p-value:", t_test_result4$p.value, "\n")
+cat("Rhythmic vs next to abundance T-test p-value:", t_test_result5$p.value, "\n")
+cat("Rhythmic vs less prevalent T-test p-value:", t_test_result6$p.value, "\n")
+cat("Rhythmic vs less abundant T-test p-value:", t_test_result7$p.value, "\n")
+}
+
+## First PCA 
+PCAvalues(pca_metpath, t.metpath) ## common names and proteobacteria
+
+PCAvalues(pca_metpath.biosyn,biosyn.metpath )
+PCAvalues(pca_metpath.biosyn.sp,biosyn.metpath.sp)
+PCAvalues(pca_metpath.deg, degradation.metpath) ## the fx was changed so it provides the pca 1 
+PCAvalues(pca_metpath.deg.sp, degradation.metpath.sp)
+## short
+PCAvalues(pca_metpathshort, t.metpath3) ## general categories
+
+# replaced proteobacteria
+PCAvalues(pca_metpath.sp, t.metpath.sp) # common names
+
+PCAvalues(pca_metpathshort2, t.metpath3.sp) # 
+
+# Check effect size (Cohen's d)
+effect_size <- abs(mean(rhythmic_data$pc2_values) - mean(non_rhythmic_data$pc2_values)) / 
+               sqrt((sd(rhythmic_data$pc2_values)^2 + sd(non_rhythmic_data$pc2_values)^2) / 2)
+
+cat("Effect size (Cohen's d):", effect_size, "\n")
+```
+
+
+## Significantly different pathways
+
+It wont be done with the common names because the 8 bacteria by group is
+statistically limited to use binary data. Is more recommendable to
+aggregate the data.
+
+```{r bootstrap significant differences}
+
+#### bootstrap
+set.seed(1789)
+# Set the number of bootstrap iterations
+num_bootstraps <- 10000
+
+# Extract relevant columns (excluding species_name and Rhythmicity)
+pathway_data <- t.metpathtypes.matrixclas[, -c(1, 2)]
+
+# Function to calculate the differences and counts
+calculate_differences_pvalues_counts <- function(pathway_data, rhythmic_indices) {
+  rhythmic_group <- pathway_data[rhythmic_indices, ]
+  comparison_indices <- sample(setdiff(1:nrow(pathway_data), rhythmic_indices), 8)
+  comparison_group <- pathway_data[comparison_indices, ]
+  
+  # Remove non-numeric columns
+  rhythmic_numeric <- rhythmic_group[, sapply(rhythmic_group, is.numeric)]
+  comparison_numeric <- comparison_group[, sapply(comparison_group, is.numeric)]
+  
+  # Calculate mean for rhythmic group
+  rhythmic_mean <- colMeans(rhythmic_numeric)
+  # Calculate mean for comparison group
+  comparison_mean <- colMeans(comparison_numeric)
+  
+  # Perform the Wilcoxon rank-sum test for each pathway
+  p_values <- sapply(1:ncol(rhythmic_numeric), function(i) {
+    result <- wilcox.test(rhythmic_numeric[,i], comparison_numeric[,i], exact = FALSE)
+    if (is.na(result$p.value)) {
+      return(1) # Return a p-value of 1 if NA
+    } else {
+      return(result$p.value)
+    }
+  })
+  
+  # Initialize vectors to store counts
+  sign_diff <- rep(0, length(p_values))
+  higher_mean <- rep(0, length(p_values))
+  lower_mean <- rep(0, length(p_values))
+  
+  # Loop through pathways
+  for (i in seq_along(p_values)) {
+    # Check if the p-value is not NA and the difference is significant
+    if (!is.na(p_values[i]) && p_values[i] < 0.05) {
+      sign_diff[i] <- sign_diff[i] + 1
+      # Check if rhythmic mean is higher
+      if (rhythmic_mean[i] > comparison_mean[i]) {
+        higher_mean[i] <- higher_mean[i] + 1
+      } else if (rhythmic_mean[i] < comparison_mean[i]) {
+        lower_mean[i] <- lower_mean[i] + 1
+      }
+    }
+  }
+  
+  return(list(sign_diff = sign_diff, higher_mean = higher_mean, lower_mean = lower_mean))
+}
+
+# Initialize empty matrices to store results
+sign_diff_matrix <- matrix(0, nrow = ncol(pathway_data), ncol = num_bootstraps)
+higher_mean_matrix <- matrix(0, nrow = ncol(pathway_data), ncol = num_bootstraps)
+lower_mean_matrix <- matrix(0, nrow = ncol(pathway_data), ncol = num_bootstraps)
+
+# Initialize dataframe to store mean values for each simulation
+mean_df <- data.frame(
+  rhythmic_mean = numeric(num_bootstraps),
+  permuted_mean = numeric(num_bootstraps)
+)
+
+# Perform bootstrap iterations
+set.seed(123)  # for reproducibility
+
+# Initialize vectors to store mean values for LYSINE-SYN
+lysine_syn_rhythmic_mean <- numeric(num_bootstraps)
+lysine_syn_permuted_mean <- numeric(num_bootstraps)
+
+for (i in 1:num_bootstraps) {
+  # Extract indices of rhythmic bacteria
+  rhythmic_indices <- which(t.metpathtypes.matrixclas$Rhythmicity == "rhythmic")
+  
+  # Calculate differences, p-values, and counts
+  results <- calculate_differences_pvalues_counts(pathway_data, rhythmic_indices)
+  
+  # Store results in matrices
+  sign_diff_matrix[, i] <- results$sign_diff
+  higher_mean_matrix[, i] <- results$higher_mean
+  lower_mean_matrix[, i] <- results$lower_mean
+  
+  # Sample 8 random species
+  comparison_indices <- sample(setdiff(1:nrow(pathway_data), rhythmic_indices), 8)
+  
+  # Calculate mean for rhythmic and permuted groups
+  rhythmic_mean <- mean(colMeans(pathway_data[rhythmic_indices, ]))
+  permuted_mean <- mean(colMeans(pathway_data[comparison_indices, ]))
+  
+  # Store mean values in dataframe
+  mean_df$rhythmic_mean[i] <- rhythmic_mean
+  mean_df$permuted_mean[i] <- permuted_mean
+  
+  # Store mean values for LYSINE-SYN pathway
+  lysine_syn_rhythmic_mean[i] <- mean(pathway_data[rhythmic_indices, "LYSINE-SYN"])
+  lysine_syn_permuted_mean[i] <- mean(pathway_data[comparison_indices, "LYSINE-SYN"])
+}
+
+# Transpose the matrices to match the number of pathways
+sign_diff_counts <- colSums(t(sign_diff_matrix))
+higher_mean_counts <- colSums(t(higher_mean_matrix))
+lower_mean_counts <- colSums(t(lower_mean_matrix))
+
+# Create the data frame
+result_df <- data.frame(
+  pathw_id = colnames(pathway_data),
+  sign_diff = sign_diff_counts,
+  higher_mean = higher_mean_counts,
+  lower_mean = lower_mean_counts
+)
+
+# Create data frame for LYSINE-SYN mean comparisons
+lysine_syn_mean_df <- data.frame(
+  rhythmic_mean = lysine_syn_rhythmic_mean,
+  permuted_mean = lysine_syn_permuted_mean
+)
+
+#write_csv(result_df, "significantly_different_bootstrap.csv")
+#result_df <- read_csv ("significantly_different_bootstrap.csv")
+result_df <- result_df %>% mutate(perc_sign = sign_diff*100/10000)
+
+hist(result_df$perc_sign)
+
+```
+
+```{r cloud plot ant table signf pathways}
+# Load required libraries
+library(wordcloud)
+library(RColorBrewer)
+
+# Filter pathways with percentage of significance over 50%
+important_pathways <- result_df[result_df$perc_sign > 50, ]
+
+wrdc <- wordcloud(words= important_pathways$pathw_id, freq= important_pathways$perc_sign, min.freq = 50, random.order = FALSE, colors=c("darkorchid4", "darkorange2", "cyan2", "blue2", "aquamarine1", "darkcyan", "chocolate", "black", "coral2", "darkolivegreen2", "cornsilk4"), ordered.colors = T, scale = c(1.5, .5), rot.per = 0)
+
+#saved with save as. is not save in wrdc object
+## table with the 25 most frequently different
+mostfreq <- result_df %>% arrange(desc(perc_sign)) %>% select(pathw_id, perc_sign)
+
+tablesign <- knitr::kable(mostfreq[1:50,1:2], format= "latex" , digits = 2) ##supplementary tables
+tablesign
+```
+
+```{r looking at lysine syn in rhythmic}
+
+#rhythmic bacteria
+metpathcom.types <-read_csv("Metabolic_matrix_withTypes2.csv")
+
+lyspat <- metpathcom.types %>% filter(TYPES1 == "LYSINE-SYN")
+# filter the rhythmic columns 
+rhyt <- c("Phocaeicola_dorei", "Bacteroides_uniformis" , "Phocaeicola_vulgatus", "Bacteroides_koreensis" , "Roseburia_faecis", "Ruminococcus_torques" , "Dorea_formicigenerans" , "Ruminococcus_gnavus_ATCC_29149" )
+
+lysinpaths <- c("COMMON_NAME", "TYPES1", "TYPES2", rhyt)
+# Subset the data frame based on selected columns
+lysinerh <- lyspat[, lysinpaths]
+
+## seven have two lys pathways. All of these seven have the lys bio III and IV. Let's see how are those pathways distributed in the complete data
+metpath.matrix <- read_csv ("met_matrix_all_bact_withTypes.csv")
+
+bothlys <- metpath.matrix %>% filter(COMMON_NAME == "L-lysine biosynthesis III" | COMMON_NAME == "L-lysine biosynthesis VI")
+
+bothlys2 <- as.data.frame(t(bothlys[, -(1:3)])) %>% mutate (both_path = V1 + V2)
+
+## pathways separated
+lyspat.iii <- metpath.matrix %>% filter(COMMON_NAME == "L-lysine biosynthesis III")
+tlys.iii <- as.data.frame(t(lyspat.iii[, -(1:3)]))
+
+lyspat.vi <- metpath.matrix %>% filter(COMMON_NAME == "L-lysine biosynthesis VI")
+tlys.vi <- as.data.frame(t(lyspat.vi[, -(1:3)]))
+
+## less than a hundred species have both pathways. Almost 200 have the lysine biosynthesis III pathway and near to 150 have the vi pathway. 
+# What about the other pathways
+all.lys <-metpath.matrix %>% filter(TYPES1 == "LYSINE-SYN")
+alllyscolnames <- all.lys$COMMON_NAME
+
+t.lysall <- as.data.frame(t(all.lys[, -(1:3)]))  
+colnames(t.lysall) <- make.names(alllyscolnames)
+
+t.lysall <- t.lysall %>% mutate (all_path = L.lysine.biosynthesis.I + L.lysine.biosynthesis.II  +  L.lysine.biosynthesis.III  + L.lysine.biosynthesis.VI, I_plus_II = L.lysine.biosynthesis.I + L.lysine.biosynthesis.II,  I_plus_III = L.lysine.biosynthesis.I + L.lysine.biosynthesis.III, I_plus_VI = L.lysine.biosynthesis.I + L.lysine.biosynthesis.VI, II_plus_III = L.lysine.biosynthesis.II + L.lysine.biosynthesis.III, II_plus_VI = L.lysine.biosynthesis.II + L.lysine.biosynthesis.VI, III_plus_VI = L.lysine.biosynthesis.III + L.lysine.biosynthesis.VI)
+
+
+## all lys biosyn oficial plot
+
+gglys <- ggplot(t.lysall, aes(x = all_path)) +
+  geom_histogram(binwidth = 1, position = "identity", fill = "grey", color = "black", size = 0.2) + 
+  theme_bw() +
+  theme(panel.grid = element_blank(), axis.text.x = element_text(size = 18), 
+        axis.text.y = element_text(size=18), 
+        axis.title.x = element_text(size = 22), axis.title.y = element_text(size = 22)) +
+  labs(title = NULL, x = "Count of lysine biosynthesis pathways", y = "Bacteria count")
+
+
+### we load the differential pathways image
+
+library(magick)
+
+dpath <- ggdraw() + draw_image("Wordcloudpathways.png") +    annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf,  color = "black", fill = NA, size = 1)
+# Combine the image and the bounding box using plot_grid
+
+diffpath <- cowplot::plot_grid(dpath, gglys, ncol= 2, nrow= 1,  
+                               labels =c("A", "B"), label_size = 26,
+                                    label_x = c(0.92,0.92),
+                                    label_y = c(0.99,0.99))
+
+ggsave("diffpathwfig.pdf",plot= diffpath, width = 14, height = 5)
+
+diffpath
+dpath
+```
+
+```{r lys pathways combined plots}
+
+## plots
+ggplot(bothlys2, aes(x = factor(bothlys2$both_path)))+  geom_bar()+ labs(title = "Lysine biosynthesis III + VI frequency", x = "Sum of both paths",
+       y = "Frequency") +  ylim(0, 500)
+
+ggplot(tlys.iii, aes(x = factor(tlys.iii$V1)))+  geom_bar()+ labs(title = "Lysine biosynthesis III frequency",x = "Times present",
+       y = "Frequency") +  ylim(0, 500)
+
+ggplot(tlys.vi, aes(x = factor(tlys.vi$V1)))+  geom_bar()+ labs(title = "Lysine biosynthesis VI frequency",   x = "Times present", y = "Frequency") +  ylim(0, 500)
+
+
+ggplot(t.lysall, aes(x = factor(t.lysall$all_path)))+  geom_bar()+ labs(title= "All", x = "Times present", y = "Frequency") +  ylim(0, 500)
+
+### most bacteria only have one of the pathways. 
+
+## sum combination of pathways
+counts_list <- list()
+
+# Columns of interest
+columns_of_interest <- c("I_plus_II", "I_plus_III", "I_plus_VI", "II_plus_III", "II_plus_VI", "III_plus_VI")
+
+# Iterate over the columns of interest
+for (col in columns_of_interest) {
+  # Count the occurrences of 2 in the current column
+  count <- sum(t.lysall[[col]] == 2, na.rm = TRUE)
+  # Append the count to the list
+  counts_list[[col]] <- count
+}
+
+# Create a dataframe from the list
+counts_df <- data.frame(
+  Id = names(counts_list),
+  Count = unlist(counts_list)
+)
+
+# Plot the distribution
+bar_plot <- ggplot(counts_df, aes(x = Id, y = Count)) +
+  geom_bar(stat = "identity", fill = "grey", color = "black") +
+  labs(title = NULL, x = NULL, y = "Number of bacteria") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 18),
+        axis.text.y = element_text(size = 18),
+        axis.title.x = element_text(size = 22),
+        axis.title.y = element_text(size = 22))
+
+#ggsave("lyspathdist.pdf",plot= bar_plot, width = 8, height = 5)
+
+```
+From the 605 bacteria 424 have only one lysine biosynthesis pathways. 101 have 2 of the four possible pathways and 80 has none of the lysine biosynthesis pathways.
+Distribution of count of lysine biosynthesis pathways for all 614 bacteria
+
+
+The end...
