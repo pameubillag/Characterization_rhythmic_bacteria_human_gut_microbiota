@@ -1,0 +1,393 @@
+Taxon,subj1,Rhythmicity_s1,subj2,Rhythmicity_s2,Rhythmicity_Reit,Type,Observation
+Butyrivibrio_,s1,yes1,s2,no2,NA,,species not specified
+Dorea_,s1,yes1,s2,no2,NA,,species not specified
+k__Bacteria;p__Tenericutes;c__Mollicutes;o__RF39;f__;_;s__,s1,yes1,s2,no2,NA,,species not specified
+Coprococcus_,s1,yes1,s2,no2,NA,,species not specified
+Roseburia_,s1,yes1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Erysipelotrichi;o__Erysipelotrichales;f__Erysipelotrichaceae;_;s__,s1,yes1,s2,no2,NA,,species not specified
+[Ruminococcus]_,s1,yes1,s2,no2,NA,,species not specified
+Blautia_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Bacteroidetes;c__Bacteroidia;o__Bacteroidales;f__Rikenellaceae;_;s__,s1,no1,s2,yes2,NA,,species not specified
+k__Bacteria;p__Bacteroidetes;c__Bacteroidia;o__Bacteroidales;f__S24-7;_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Bacteroidetes;c__Bacteroidia;o__Bacteroidales;f__[Barnesiellaceae];_;s__,s1,no1,s2,no2,NA,,species not specified
+Clostridium_hiranonis,s1,no1,s2,no2,NA,2,
+Lactococcus_garvieae,s1,no1,s2,no2,NA,2,
+Lachnospira_,s1,no1,s2,yes2,NA,,species not specified
+Anaerostipes_,s1,no1,s2,no2,NA,,species not specified
+Faecalibacterium_prausnitzii,s1,no1,s2,no2,yes,3,
+Lactococcus_,s1,no1,s2,no2,NA,,species not specified
+Veillonella_parvula,s1,no1,s2,no2,NA,2,
+k__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Caulobacterales;f__Caulobacteraceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+Bacteroides_ovatus,s1,no1,s2,yes2,NA,3,
+Parabacteroides_distasonis,s1,no1,s2,yes2,no,3,
+Parvimonas_,s1,no1,s2,yes2,NA,,species not specified
+k__Bacteria;p__Tenericutes;c__RF3;o__ML615J-28;f__;_;s__,s1,no1,NA,NA,NA,,species not specified
+Bacteroides_,s1,no1,s2,yes2,NA,,species not specified
+Bacteroides_fragilis,s1,no1,s2,no2,no,2,
+SMB53_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Peptostreptococcaceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__;_;s__,s1,no1,s2,yes2,NA,,species not specified
+Dialister_,s1,no1,s2,no2,NA,,species not specified
+Oscillospira_,s1,no1,s2,no2,NA,,species not specified
+Lactobacillus_ruminis,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__[Mogibacteriaceae];_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Leuconostocaceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Clostridiaceae;_;s__,s1,no1,s2,yes2,NA,,species not specified
+Clostridium_,s1,no1,s2,no2,NA,,species not specified
+Lactobacillus_reuteri,s1,no1,s2,no2,NA,2,
+Haemophilus_parainfluenzae,s1,no1,s2,no2,NA,2,
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Ruminococcaceae;_;s__,s1,no1,s2,yes2,NA,,species not specified
+Bacteroides_acidifaciens,s1,no1,s2,no2,NA,2,
+k__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__RF32;f__;_;s__,s1,no1,s2,no2,NA,,species not specified
+Anaeroplasma_,s1,no1,s2,no2,NA,,species not specified
+Synergistes_,s1,no1,s2,no2,NA,,species not specified
+Bacteroides_caccae,s1,no1,s2,no2,no,2,
+Streptococcus_,s1,no1,s2,no2,NA,,species not specified
+Veillonella_dispar,s1,no1,s2,no2,no,2,
+Parabacteroides_,s1,no1,s2,yes2,NA,,species not specified
+Odoribacter_,s1,no1,s2,no2,NA,,species not specified
+Prevotella_copri,s1,no1,s2,yes2,yes,3,
+Cloacibacterium_,s1,no1,s2,no2,NA,,species not specified
+Bacteroides_eggerthii,s1,no1,s2,yes2,no,3,
+k__Bacteria;p__Cyanobacteria;c__4C0d-2;o__YS2;f__;_;s__,s1,no1,s2,no2,NA,,species not specified
+Lactobacillus_,s1,no1,s2,no2,NA,,species not specified
+Anaerococcus_,s1,no1,s2,no2,NA,,species not specified
+Lactobacillus_delbrueckii,s1,no1,NA,NA,NA,,
+Filifactor_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Pseudomonadaceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+Dehalobacterium_,s1,no1,s2,no2,NA,,species not specified
+Oribacterium_,s1,no1,s2,no2,NA,,species not specified
+Ruminococcus_,s1,no1,s2,no2,NA,,species not specified
+Veillonella_,s1,no1,s2,no2,NA,,species not specified
+AF12_,s1,no1,s2,no2,NA,,species not specified
+Leuconostoc_mesenteroides,s1,no1,NA,NA,NA,,
+Prevotella_,s1,no1,s2,no2,NA,,species not specified
+Gemella_,s1,no1,s2,no2,NA,,species not specified
+Ruminococcus_callidus,s1,no1,NA,NA,no,2,
+k__Bacteria;p__TM7;c__TM7-3;o__;f__;_;s__,s1,no1,s2,no2,NA,,species not specified
+Leuconostoc_,s1,no1,s2,no2,NA,,species not specified
+Candidatus Arthromitus_,s1,no1,s2,no2,NA,,species not specified
+Pedobacter_,s1,no1,s2,no2,NA,,species not specified
+Bacillus_,s1,no1,NA,NA,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Gemellales;f__Gemellaceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+Devosia_,s1,no1,s2,no2,NA,,species not specified
+Paraprevotella_,s1,no1,s2,no2,NA,,species not specified
+Ruminococcus_flavefaciens,s1,no1,NA,NA,NA,,
+Butyricimonas_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Christensenellaceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+Sphingopyxis_,s1,no1,NA,NA,NA,,
+Megamonas_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Peptococcaceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__;f__;_;s__,s1,no1,NA,NA,NA,,
+Finegoldia_,s1,no1,NA,NA,NA,,
+Fusobacterium_,s1,no1,s2,yes2,NA,,species not specified
+Lachnobacterium_,s1,no1,s2,no2,NA,,species not specified
+Phascolarctobacterium_,s1,no1,s2,no2,NA,,
+Lactobacillus_zeae,s1,no1,s2,no2,NA,2,
+Prevotella_stercorea,s1,no1,s2,no2,no,2,
+Megasphaera_,s1,no1,s2,no2,NA,,species not specified
+Streptococcus_sobrinus,s1,no1,NA,NA,NA,,
+rc4-4_,s1,no1,s2,no2,NA,,species not specified
+Bacteroides_uniformis,s1,no1,s2,yes2,yes,1,
+Sphingobacterium_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Lachnospiraceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+Campylobacter_,s1,no1,s2,no2,NA,,species not specified
+Chryseobacterium_,s1,no1,s2,no2,NA,,species not specified
+Paenibacillus_,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__;_;s__,s1,no1,s2,no2,NA,,species not specified
+Enterococcus_,s1,no1,s2,no2,NA,,species not specified
+Lactobacillus_iners,s1,no1,s2,no2,NA,2,
+Christensenella_,s1,no1,s2,no2,NA,,species not specified
+Pseudoramibacter,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Firmicutes;c__Clostridia;o__SHA-98;f__;_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Rhodobacterales;f__Rhodobacteraceae;_;s__,s1,no1,s2,no2,NA,,species not specified
+k__Bacteria;p__Proteobacteria;c__Betaproteobacteria;o__Burkholderiales;f__;_;s__,s1,no1,s2,no2,NA,,species not specified
+Comamonas_,s1,no1,s2,no2,NA,,species not specified
+Campylobacter_ureolyticus,s1,no1,s2,no2,NA,,species not specified
+Bulleidia_moorei,NA,NA,s2,yes2,NA,3,
+Clostridium_citroniae,NA,NA,s2,yes2,NA,3,
+Leptotrichia_,NA,NA,s2,no2,NA,,species not specified
+k__Bacteria;p__Actinobacteria;c__Coriobacteriia;o__Coriobacteriales;f__Coriobacteriaceae;_;s__,NA,NA,s2,no2,NA,,species not specified
+Sutterella_,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Veillonellaceae;_;s__,NA,NA,s2,no2,NA,,
+Desulfovibrio_,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Bacteroidetes;c__Bacteroidia;o__Bacteroidales;f__;_;s__,NA,NA,s2,no2,NA,,
+Dorea_formicigenerans,NA,NA,s2,no2,yes,1,
+Weissella_viridescens,NA,NA,s2,no2,NA,,
+Parabacteroides_gordonii,NA,NA,s2,no2,NA,,
+Coprococcus_eutactus,NA,NA,s2,no2,no,,
+Faecalibacterium_,NA,NA,s2,no2,NA,,
+Oxalobacter_formigenes,NA,NA,s2,no2,NA,,
+[Eubacterium]_dolichum,NA,NA,s2,no2,NA,,
+[Eubacterium]_biforme,NA,NA,s2,no2,NA,,
+Granulicatella_,NA,NA,s2,no2,NA,,
+Agrobacterium_,NA,NA,s2,no2,NA,,
+[Prevotella]_,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Lactobacillaceae;_;s__,NA,NA,s2,no2,NA,,
+Weissella_cibaria,NA,NA,s2,no2,NA,,
+Blautia_producta,NA,NA,s2,no2,NA,,
+Neisseria_subflava,NA,NA,s2,no2,NA,,
+Turicibacter_,NA,NA,s2,no2,NA,,
+Prevotella_melaninogenica,NA,NA,s2,no2,NA,,
+Mucispirillum_schaedleri,NA,NA,s2,no2,NA,,
+Clostridium_saccharogumia,NA,NA,s2,no2,NA,,
+Ruminococcus_bromii,NA,NA,s2,no2,yes,3,
+Ralstonia_,NA,NA,s2,no2,NA,,
+k__Bacteria;p__TM7;c__TM7-3;o__CW040;f__;_;s__,NA,NA,s2,no2,NA,,
+Adlercreutzia_,NA,NA,s2,no2,NA,,
+Porphyromonas_,NA,NA,s2,no2,NA,,
+Prevotella_nanceiensis,NA,NA,s2,no2,NA,,
+Alistipes_indistinctus,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Cyanobacteria;c__Chloroplast;o__Streptophyta;f__;_;s__,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Planococcaceae;_;s__,NA,NA,s2,no2,NA,,
+Staphylococcus_epidermidis,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Aerococcaceae;_;s__,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;_;s__,NA,NA,s2,no2,NA,,
+Clostridium_perfringens,NA,NA,s2,no2,NA,,
+Roseburia_faecis,NA,NA,s2,no2,yes,1,
+Clostridium_methylpentosum,NA,NA,s2,no2,NA,,
+Schwartzia_,NA,NA,s2,no2,NA,,
+Peptoniphilus_,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Rhizobiales;f__Bradyrhizobiaceae;_;s__,NA,NA,s2,no2,NA,,
+Afipia_,NA,NA,s2,no2,NA,,
+Rhodoplanes_,NA,NA,s2,no2,NA,,
+Acidocella_,NA,NA,s2,no2,NA,,
+Curvibacter_,NA,NA,s2,no2,NA,,
+Limnohabitans_curvus,NA,NA,s2,no2,NA,,
+Neisseria_,NA,NA,s2,no2,NA,,
+Bilophila_,NA,NA,s2,no2,NA,,
+k__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Enterobacteriales;f__Enterobacteriaceae;_;s__,NA,NA,s2,no2,NA,,
+Stenotrophomonas_geniculata,NA,NA,s2,no2,NA,,
+k__Bacteria;p__SR1;c__;o__;f__;_;s__,NA,NA,s2,no2,NA,,
+Clostridium_celatum,NA,NA,NA,NA,yes,3,
+PRLE_s,NA,NA,NA,NA,yes,,species not specified
+PAC001595_s,NA,NA,NA,NA,yes,,species not specified
+QTXI_s,NA,NA,NA,NA,yes,,species not specified
+Ruminococcus_gnavus,s1,no1,s2,no2,yes,1,
+GL538271_s,NA,NA,NA,NA,yes,,species not specified
+Ruthenibacterium_lactatiformans,NA,NA,NA,NA,yes,3,
+PAC001211_s,NA,NA,NA,NA,yes,,species not specified
+PAC001440_s,NA,NA,NA,NA,yes,,species not specified
+Shigella_flexneri,NA,NA,NA,NA,yes,3,
+Alistipes_putredinis,NA,NA,NA,NA,yes,3,
+FP929045_s,NA,NA,NA,NA,yes,,species not specified
+GG697149_s,NA,NA,NA,NA,yes,,species not specified
+PAC001129_s,NA,NA,NA,NA,yes,,species not specified
+Holdemanella_biformis,NA,NA,NA,NA,yes,3,
+PAC001250_s,NA,NA,NA,NA,yes,,species not specified
+Bifidobacterium_adolescentis,NA,NA,NA,NA,yes,3,
+Methanobrevibacter_smithii,NA,NA,NA,NA,yes,3,
+Bacteroides_koreensis,NA,NA,NA,NA,yes,1,
+Gemmiger_formicilis,NA,NA,NA,NA,yes,3,
+PAC002117_s,NA,NA,NA,NA,yes,,species not specified
+Bacteroides_dorei,NA,NA,NA,NA,yes,1,
+Ellagibacter_isourolithinifaciens,NA,NA,NA,NA,yes,3,
+Senegalimassilia_anaerobia,NA,NA,NA,NA,yes,3,
+CP013476_s,NA,NA,NA,NA,yes,,species not specified
+FTRU_s,NA,NA,NA,NA,yes,,species not specified
+Alistipes_shahii,NA,NA,NA,NA,yes,3,
+PAC000191_s,NA,NA,NA,NA,yes,,species not specified
+Akkermansia_muciniphila,NA,NA,NA,NA,yes,3,
+Sutterella_wadsworthensis,NA,NA,NA,NA,yes,3,
+QTXK_s,NA,NA,NA,NA,yes,,species not specified
+PAC001056_s,NA,NA,NA,NA,yes,,species not specified
+PAC001187_s,NA,NA,NA,NA,yes,,species not specified
+Dialister_succinatiphilus,NA,NA,NA,NA,yes,3,
+Bacteroides_vulgatus,NA,NA,NA,NA,yes,1,
+Bifidobacterium_longum,NA,NA,NA,NA,yes,3,
+PAC001055_s,NA,NA,NA,NA,yes,,species not specified
+CZAQ_s,NA,NA,NA,NA,yes,,species not specified
+Blautia_wexlerae,NA,NA,NA,NA,yes,3,
+CCMM_s,NA,NA,NA,NA,yes,,species not specified
+Ruminococcus_torques,NA,NA,NA,NA,yes,1,
+Kineothrix_alysoides,NA,NA,NA,NA,yes,3,
+PAC001135_s,NA,NA,NA,NA,yes,,species not specified
+KI271778_s,NA,NA,NA,NA,yes,,species not specified
+EU843173_s,NA,NA,NA,NA,yes,,species not specified
+PAC000739_s,NA,NA,NA,NA,yes,,species not specified
+Intestinibacter_bartlettii,NA,NA,NA,NA,yes,3,
+PAC001247_s,NA,NA,NA,NA,yes,,species not specified
+Romboutsia_ilealis,NA,NA,NA,NA,yes,3,
+Agathobaculum_butyriciproducens,NA,NA,NA,NA,yes,3,
+QUHQ_s,NA,NA,NA,NA,yes,,species not specified
+Odoribacter_splanchnicus,NA,NA,NA,NA,yes,3,
+JH815513_s,NA,NA,NA,NA,yes,,species not specified
+Alistipes_obesi,NA,NA,NA,NA,yes,3,
+Agathobacter_rectalis,NA,NA,NA,NA,no,,
+PAC001042_s,NA,NA,NA,NA,no,,
+Bacteroides_massiliensis,NA,NA,NA,NA,no,,
+Bilophila_wadsworthia,NA,NA,NA,NA,no,,
+PAC001207_s,NA,NA,NA,NA,no,,
+PAC001276_s,NA,NA,NA,NA,no,,
+Lachnospira_pectinoschiza,NA,NA,NA,NA,no,,
+FJ680636_s,NA,NA,NA,NA,no,,
+LARJ_s,NA,NA,NA,NA,no,,
+AM697462_s,NA,NA,NA,NA,no,,
+QSTA_s,NA,NA,NA,NA,no,,
+Eubacterium_ramulus,NA,NA,NA,NA,no,,
+Bacteroides_coprocola,NA,NA,NA,NA,no,,
+FJ880485_s,NA,NA,NA,NA,no,,
+PAC001100_s,NA,NA,NA,NA,no,,
+Eubacterium_ventriosum,NA,NA,NA,NA,no,,
+Parasutterella_excrementihominis,NA,NA,NA,NA,no,,
+Ruminococcus_lactaris,NA,NA,NA,NA,no,,
+PAC001173_s,NA,NA,NA,NA,no,,
+QUCK_s,NA,NA,NA,NA,no,,
+Clostridium_bolteae,NA,NA,NA,NA,no,,
+PAC001040_s,NA,NA,NA,NA,no,,
+AP018533_s,NA,NA,NA,NA,no,,
+Prevotella_rara,NA,NA,NA,NA,no,,
+PAC001927_s,NA,NA,NA,NA,no,,
+GQ896617_s,NA,NA,NA,NA,no,,
+PAC001306_s,NA,NA,NA,NA,no,,
+Phascolarctobacterium_succinatutens,NA,NA,NA,NA,no,,
+Dialister_invisus,NA,NA,NA,NA,no,,
+PAC001220_s,NA,NA,NA,NA,no,,
+PAC001038_s,NA,NA,NA,NA,no,,
+PAC001115_s,NA,NA,NA,NA,no,,
+PAC002295_s,NA,NA,NA,NA,no,,
+Acidaminococcus_intestini,NA,NA,NA,NA,no,,
+PAC001630_s,NA,NA,NA,NA,no,,
+QTXS_s,NA,NA,NA,NA,no,,
+PAC001052_s,NA,NA,NA,NA,no,,
+PAC001039_s,NA,NA,NA,NA,no,,
+Alistipes_onderdonkii,NA,NA,NA,NA,no,,
+PAC001121_s,NA,NA,NA,NA,no,,
+Fusicatenibacter_saccharivorans,NA,NA,NA,NA,no,,
+Bifidobacterium_bifidum,NA,NA,NA,NA,no,,
+PAC001054_s,NA,NA,NA,NA,no,,
+Bacteroides_stercoris,NA,NA,NA,NA,no,,
+Slackia_isoflavoniconvertens,NA,NA,NA,NA,no,,
+PAC001436_s,NA,NA,NA,NA,no,,
+Alistipes_finegoldii,NA,NA,NA,NA,no,,
+Bacteroides_clarus,NA,NA,NA,NA,no,,
+PAC002523_s,NA,NA,NA,NA,no,,
+Klebsiella_granulomatis,NA,NA,NA,NA,no,,
+PAC001214_s,NA,NA,NA,NA,no,,
+Desulfovibrio_piger,NA,NA,NA,NA,no,,
+Bacteroides_cellulosilyticus,NA,NA,NA,NA,no,,
+Parabacteroides_merdae,NA,NA,NA,NA,no,,
+Ruminococcus_bicirculans,NA,NA,NA,NA,no,,
+FJ880048_s,NA,NA,NA,NA,no,,
+PAC001050_s,NA,NA,NA,NA,no,,
+FJ367735_s,NA,NA,NA,NA,no,,
+PAC001254_s,NA,NA,NA,NA,no,,
+PAC001654_s,NA,NA,NA,NA,no,,
+PAC001424_s,NA,NA,NA,NA,no,,
+DQ905423_s,NA,NA,NA,NA,no,,
+KQ235806_s,NA,NA,NA,NA,no,,
+PAC001304_s,NA,NA,NA,NA,no,,
+PAC001394_s,NA,NA,NA,NA,no,,
+Bacteroides_plebeius,NA,NA,NA,NA,no,,
+PRLC_s,NA,NA,NA,NA,no,,
+Dorea_longicatena,NA,NA,NA,NA,no,,
+PAC001451_s,NA,NA,NA,NA,no,,
+LT635860_s,NA,NA,NA,NA,no,,
+PAC001458_s,NA,NA,NA,NA,no,,
+Coprobacter_fastidiosus,NA,NA,NA,NA,no,,
+GQ175497_s,NA,NA,NA,NA,no,,
+PAC001259_s,NA,NA,NA,NA,no,,
+Mediterraneibacter_faecis,NA,NA,NA,NA,no,,
+PAC002124_s,NA,NA,NA,NA,no,,
+PAC001290_s,NA,NA,NA,NA,no,,
+PAC001293_s,NA,NA,NA,NA,no,,
+JPJs,NA,NA,NA,NA,no,,
+HQ792101_s,NA,NA,NA,NA,no,,
+KQ968618_s,NA,NA,NA,NA,no,,
+Bacteroides_xylanisolvens,NA,NA,NA,NA,no,,
+DQ456197_s,NA,NA,NA,NA,no,,
+PAC002879_s,NA,NA,NA,NA,no,,
+Parabacteroides_goldsteinii,NA,NA,NA,NA,no,,
+Barnesiella_intestinihominis,NA,NA,NA,NA,no,,
+Monoglobus_pectinilyticus,NA,NA,NA,NA,no,,
+Roseburia_inulinivorans,NA,NA,NA,NA,no,,
+Howardella_ureilytica,NA,NA,NA,NA,no,,
+AAQK01001555_s,NA,NA,NA,NA,no,,
+Clostridium_ramosum,NA,NA,NA,NA,no,,
+Paraprevotella_clara,NA,NA,NA,NA,no,,
+LARN_s,NA,NA,NA,NA,no,,
+Lactobacillus_rogosae,NA,NA,NA,NA,no,,
+Adlercreutzia_equolifaciens_subsp._celatus,NA,NA,NA,NA,no,,
+Anaerotignum_lactatifermentans,NA,NA,NA,NA,no,,
+PAC001155_s,NA,NA,NA,NA,no,,
+Eubacterium_siraeum,NA,NA,NA,NA,no,,
+Enterococcus_durans,NA,NA,NA,NA,no,,
+PAC001673_s,NA,NA,NA,NA,no,,
+PAC001035_s,NA,NA,NA,NA,no,,
+QTYB_s,NA,NA,NA,NA,no,,
+Bifidobacterium_pseudocatenulatum,NA,NA,NA,NA,no,,
+PAC002301_s,NA,NA,NA,NA,no,,
+Intestinimonas_butyriciproducens,NA,NA,NA,NA,no,,
+PAC001249_s,NA,NA,NA,NA,no,,
+Butyricimonas_virosa,NA,NA,NA,NA,no,,
+Coprococcus_comes,NA,NA,NA,NA,no,,
+PAC002143_s,NA,NA,NA,NA,no,,
+PJKF_s,NA,NA,NA,NA,no,,
+Dakarella_massiliensis,NA,NA,NA,NA,no,,
+Bacteroides_salyersiae,NA,NA,NA,NA,no,,
+PAC003082_s,NA,NA,NA,NA,no,,
+PAC001240_s,NA,NA,NA,NA,no,,
+PAC001057_s,NA,NA,NA,NA,no,,
+PAC001613_s,NA,NA,NA,NA,no,,
+PAC001051_s,NA,NA,NA,NA,no,,
+Lactobacillus_gasseri,NA,NA,NA,NA,no,,
+PAC001445_s,NA,NA,NA,NA,no,,
+NFHW_s,NA,NA,NA,NA,no,,
+QRVI_s,NA,NA,NA,NA,no,,
+PAC001663_s,NA,NA,NA,NA,no,,
+Anaerobutyricum_hallii,NA,NA,NA,NA,no,,
+AM275737_s,NA,NA,NA,NA,no,,
+AM404803_s,NA,NA,NA,NA,no,,
+Eubacterium_eligens,NA,NA,NA,NA,no,,
+PAC001239_s,NA,NA,NA,NA,no,,
+Bifidobacterium_longum_subsp._longum,NA,NA,NA,NA,no,,
+Bacteroides_thetaiotaomicron,NA,NA,NA,NA,no,,
+HQ779892_s,NA,NA,NA,NA,no,,
+Anaerostipes_hadrus,NA,NA,NA,NA,no,,
+Faecalitalea_cylindroides,NA,NA,NA,NA,no,,
+Christensenella_minuta,NA,NA,NA,NA,no,,
+LARM_s,NA,NA,NA,NA,no,,
+PAC001648_s,NA,NA,NA,NA,no,,
+PAC002328_s,NA,NA,NA,NA,no,,
+Lactobacillus_amylovorus,NA,NA,NA,NA,no,,
+Butyrivibrio_crossotus,NA,NA,NA,NA,no,,
+JX095612_s,NA,NA,NA,NA,no,,
+PAC000672_s,NA,NA,NA,NA,no,,
+Roseburia_intestinalis,NA,NA,NA,NA,no,,
+PAC001204_s,NA,NA,NA,NA,no,,
+Parabacteroides_johnsonii,NA,NA,NA,NA,no,,
+Blautia_faecis,NA,NA,NA,NA,no,,
+DQ777915_s,NA,NA,NA,NA,no,,
+CYYZ_s,NA,NA,NA,NA,no,,
+LT700189_s,NA,NA,NA,NA,no,,
+PAC001162_s,NA,NA,NA,NA,no,,
+LT671417_s,NA,NA,NA,NA,no,,
+PAC001130_s,NA,NA,NA,NA,no,,
+Shigella_dysenteriae,NA,NA,NA,NA,no,,
+Butyricimonas_faecalis,NA,NA,NA,NA,no,,
+Phascolarctobacterium_faecium,NA,NA,NA,NA,no,,
+QUKS_s,NA,NA,NA,NA,no,,
+QSEU_s,NA,NA,NA,NA,no,,
+Blautia_obeum,NA,NA,NA,NA,no,,
+QSQT_s,NA,NA,NA,NA,no,,
+PAC002309_s,NA,NA,NA,NA,no,,
+PAC001034_s,NA,NA,NA,NA,no,,
+Bacteroides_intestinalis,NA,NA,NA,NA,no,,
+Alistipes_inops,NA,NA,NA,NA,no,,
+PAC001044_s,NA,NA,NA,NA,no,,
+PAC001041_s,NA,NA,NA,NA,no,,
+HQ716588_s,NA,NA,NA,NA,no,,
+PAC001037_s,NA,NA,NA,NA,no,,
+PAC000658_s,NA,NA,NA,NA,no,,
+PAC001047_s,NA,NA,NA,NA,no,,
+PAC001291_s,NA,NA,NA,NA,no,,
+Streptococcus_salivarius_subsp._salivarius,NA,NA,NA,NA,no,,
+PAC001032_s,NA,NA,NA,NA,no,,
+PAC001475_s,NA,NA,NA,NA,no,,
+AF371753_s,NA,NA,NA,NA,no,,
+Coprococcus_catus,NA,NA,NA,NA,no,,
+Bacteroides_cutis,NA,NA,NA,NA,no,,
+Blautia_caecimuris,NA,NA,NA,NA,no,,
+PAC001161_s,NA,NA,NA,NA,no,,
+QUDC_s,NA,NA,NA,NA,no,,
+AAYW_s,NA,NA,NA,NA,no,,
